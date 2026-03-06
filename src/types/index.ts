@@ -26,6 +26,16 @@ export interface ScenarioAssumption {
   margin: number;
 }
 
+export interface ScenarioConfig {
+  costModel: CostModel;
+  priceAdj: number;
+  priceAdjUnit: 'pct' | 'fixed';
+  volumeAdj: number;
+  volumeAdjUnit: 'pct' | 'pieces';
+  costAdj: number;
+  costAdjUnit: 'pct' | 'fixed';
+}
+
 export interface Scenario {
   id: string;
   name: string;
@@ -35,6 +45,7 @@ export interface Scenario {
   description: string;
   assumptions: ScenarioAssumption[];
   totals: ScenarioTotals;
+  config?: ScenarioConfig;
 }
 
 export interface ScenarioTotals {
