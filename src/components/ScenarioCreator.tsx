@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppState } from '@/store/AppContext';
 import { CostModel, Scenario, ScenarioAssumption } from '@/types';
 import { calculateAssumption, calculateTotals, formatCurrency, formatNumber, formatPercent } from '@/lib/calculations';
@@ -72,6 +72,10 @@ function AdjInput({
 export default function ScenarioCreator() {
   const { state, dispatch } = useAppState();
   const products = state.products;
+  const editingScenario = state.editingScenarioId
+    ? state.scenarios.find(s => s.id === state.editingScenarioId) ?? null
+    : null;
+
   const [scenarioName, setScenarioName] = useState('');
   const [scenarioDesc, setScenarioDesc] = useState('');
   const [globalCostModel, setGlobalCostModel] = useState<CostModel>('actual');
@@ -90,6 +94,30 @@ export default function ScenarioCreator() {
   const [overrides, setOverrides] = useState<Record<string, {
     price?: number; volume?: number; costAdj?: number; costModel?: CostModel;
   }>>({});
+
+  // Load editing scenario
+  useEffect(() => {
+    if (editingScenario) {
+      setScenarioName(editingScenario.name);
+      setScenarioDesc(editingScenario.description);
+      // Set selected products from assumptions
+      setSelectedIds(new Set(editingScenario.assumptions.map(a => a.item_id)));
+      // Load per-product overrides from assumptions
+      const newOverrides: Record<string, { price?: number; volume?: number; costAdj?: number; costModel?: CostModel }> = {};
+      editingScenario.assumptions.forEach(a => {
+        newOverrides[a.item_id] = {
+          price: a.selling_price,
+          volume: a.forecast_volume,
+          costAdj: a.cost_adjustment,
+          costModel: a.cost_model,
+        };
+      });
+      setOverrides(newOverrides);
+      setGlobalPriceAdj(0);
+      setGlobalVolumeAdj(0);
+      setGlobalCostAdj(0);
+    }
+  }, [editingScenario?.id]);
 
   const toggleItem = (id: string) => {
     setSelectedIds(prev => {
@@ -171,19 +199,32 @@ export default function ScenarioCreator() {
       return;
     }
 
-    const scenario: Scenario = {
-      id: crypto.randomUUID(),
-      name: scenarioName.trim(),
-      description: scenarioDesc.trim(),
-      created_by: 'User',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      assumptions,
-      totals,
-    };
-
-    dispatch({ type: 'ADD_SCENARIO', payload: scenario });
-    toast.success(`Scenario "${scenario.name}" saved`);
+    if (editingScenario) {
+      const updated: Scenario = {
+        ...editingScenario,
+        name: scenarioName.trim(),
+        description: scenarioDesc.trim(),
+        updated_at: new Date().toISOString(),
+        assumptions,
+        totals,
+      };
+      dispatch({ type: 'UPDATE_SCENARIO', payload: updated });
+      dispatch({ type: 'CLEAR_EDITING' });
+      toast.success(`Scenario "${updated.name}" updated`);
+    } else {
+      const scenario: Scenario = {
+        id: crypto.randomUUID(),
+        name: scenarioName.trim(),
+        description: scenarioDesc.trim(),
+        created_by: 'User',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        assumptions,
+        totals,
+      };
+      dispatch({ type: 'ADD_SCENARIO', payload: scenario });
+      toast.success(`Scenario "${scenario.name}" saved`);
+    }
     setScenarioName('');
     setScenarioDesc('');
   };
@@ -213,19 +254,29 @@ export default function ScenarioCreator() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Scenario Creator</h2>
+          <h2 className="text-2xl font-bold">
+            {editingScenario ? `Edit: ${editingScenario.name}` : 'Scenario Creator'}
+          </h2>
           <p className="text-muted-foreground text-sm mt-1">
-            Simulate pricing, volume, and cost changes
+            {editingScenario ? 'Editing existing scenario' : 'Simulate pricing, volume, and cost changes'}
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
+          {editingScenario && (
+            <Button variant="outline" size="sm" onClick={() => {
+              dispatch({ type: 'CLEAR_EDITING' });
+              handleReset();
+            }}>
+              Cancel Edit
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleReset}>
             <RotateCcw size={14} />
             Reset
           </Button>
           <Button size="sm" onClick={handleSave}>
             <Save size={14} />
-            Save Scenario
+            {editingScenario ? 'Update Scenario' : 'Save Scenario'}
           </Button>
         </div>
       </div>
