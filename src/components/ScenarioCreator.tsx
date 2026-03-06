@@ -397,7 +397,7 @@ export default function ScenarioCreator() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="metric-card">
           <p className="stat-label">Total Revenue</p>
           <p className="text-xl font-bold font-mono mt-1">฿{formatCurrency(totals.total_revenue)}</p>
@@ -416,6 +416,12 @@ export default function ScenarioCreator() {
           <p className="stat-label">Avg. Margin</p>
           <p className={`text-xl font-bold font-mono mt-1 ${totals.avg_margin >= 20 ? 'text-success' : totals.avg_margin >= 10 ? 'text-warning' : 'text-destructive'}`}>
             {formatPercent(totals.avg_margin)}
+          </p>
+        </div>
+        <div className="metric-card">
+          <p className="stat-label">Avg. Food Cost</p>
+          <p className={`text-xl font-bold font-mono mt-1 ${(100 - totals.avg_margin) <= 80 ? 'text-success' : (100 - totals.avg_margin) <= 90 ? 'text-warning' : 'text-destructive'}`}>
+            {formatPercent(100 - totals.avg_margin)}
           </p>
         </div>
       </div>
