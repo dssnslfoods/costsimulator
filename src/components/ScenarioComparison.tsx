@@ -236,7 +236,7 @@ export default function ScenarioComparison() {
               { label: 'Revenue (รายได้)', before: baselineTotals.total_revenue, after: s.totals.total_revenue, isCurrency: true, positiveIsGood: true },
               { label: 'Total Cost (ต้นทุน)', before: baselineTotals.total_cost, after: s.totals.total_cost, isCurrency: true, positiveIsGood: false },
               { label: 'Profit (กำไร)', before: baselineTotals.total_profit, after: s.totals.total_profit, isCurrency: true, positiveIsGood: true },
-              { label: 'Margin %', before: baselineTotals.avg_margin, after: s.totals.avg_margin, isCurrency: false, positiveIsGood: true },
+              { label: 'Food Margin %', before: baselineTotals.avg_margin, after: s.totals.avg_margin, isCurrency: false, positiveIsGood: true },
               { label: 'Food Cost %', before: 100 - baselineTotals.avg_margin, after: 100 - s.totals.avg_margin, isCurrency: false, positiveIsGood: false },
             ];
             return (
@@ -308,7 +308,7 @@ export default function ScenarioComparison() {
             )}
             {bestMargin && (
               <div className="metric-card bg-accent/5 border-accent/20">
-                <p className="text-xs font-medium text-accent uppercase tracking-wider">Best Margin</p>
+                <p className="text-xs font-medium text-accent uppercase tracking-wider">Best Food Margin</p>
                 <p className="font-semibold mt-1">{bestMargin.name}</p>
                 <p className="font-mono font-bold text-lg mt-1">{formatPercent(bestMargin.totals.avg_margin)}</p>
               </div>
@@ -360,14 +360,14 @@ export default function ScenarioComparison() {
 
             {/* Margin Comparison */}
             <div className="metric-card">
-              <h3 className="section-header">Margin Comparison</h3>
+              <h3 className="section-header">Food Margin Comparison</h3>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={comparisonData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
                   <Tooltip formatter={(value: number) => `${value.toFixed(2)}%`} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
-                  <Bar dataKey="margin" fill={COLORS[2]} name="Margin %" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="margin" fill={COLORS[2]} name="Food Margin %" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -437,7 +437,7 @@ export default function ScenarioComparison() {
                   ))}
                 </tr>
                 <tr>
-                  <td className="font-medium">Margin %</td>
+                  <td className="font-medium">Food Margin %</td>
                   {showBaseline && baselineTotals && (
                     <td className="text-right font-mono text-sm bg-muted/50">{formatPercent(baselineTotals.avg_margin)}</td>
                   )}

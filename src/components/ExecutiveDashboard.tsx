@@ -144,7 +144,7 @@ export default function ExecutiveDashboard() {
                     fontSize: '12px',
                   }}
                 />
-                <Bar dataKey="margin" fill={CHART_COLORS[2]} name="Margin %" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="margin" fill={CHART_COLORS[2]} name="Food Margin %" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -170,7 +170,7 @@ export default function ExecutiveDashboard() {
                   }}
                 />
                 <Legend />
-                <Bar dataKey="margin" name="Margin %" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="margin" name="Food Margin %" radius={[0, 4, 4, 0]}>
                   {productProfitData.map((entry, i) => (
                     <Cell key={i} fill={entry.margin >= 20 ? 'hsl(168, 72%, 40%)' : entry.margin >= 10 ? 'hsl(38, 92%, 50%)' : 'hsl(0, 72%, 51%)'} />
                   ))}
@@ -205,7 +205,7 @@ export default function ExecutiveDashboard() {
                         fontSize: '12px',
                       }}
                     />
-                    <Bar dataKey="margin" name="Margin %" radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="margin" name="Food Margin %" radius={[0, 4, 4, 0]}>
                       {lowestMarginData.map((entry, i) => (
                         <Cell key={i} fill={entry.margin >= 20 ? 'hsl(168, 72%, 40%)' : entry.margin >= 10 ? 'hsl(38, 92%, 50%)' : 'hsl(0, 72%, 51%)'} />
                       ))}

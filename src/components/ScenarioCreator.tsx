@@ -415,7 +415,7 @@ export default function ScenarioCreator() {
           </p>
         </div>
         <div className="metric-card">
-          <p className="stat-label">Avg. Margin</p>
+          <p className="stat-label">Avg. Food Margin</p>
           <p className={`text-xl font-bold font-mono mt-1 ${totals.avg_margin >= 20 ? 'text-success' : totals.avg_margin >= 10 ? 'text-warning' : 'text-destructive'}`}>
             {formatPercent(totals.avg_margin)}
           </p>
