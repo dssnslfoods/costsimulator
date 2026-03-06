@@ -40,7 +40,7 @@ export default function ExecutiveDashboard() {
     ? scenarios.reduce((best, s) => s.totals.avg_margin > best.totals.avg_margin ? s : best)
     : null;
 
-  // Top products by profit contribution (sorted best to worst)
+  // Top products by highest margin
   const productProfitData = hasProducts
     ? products
         .map(p => ({
@@ -48,7 +48,7 @@ export default function ExecutiveDashboard() {
           profit: (p.offer_price - p.actual_cost) * p.sale_volume,
           margin: p.offer_price > 0 ? ((p.offer_price - p.actual_cost) / p.offer_price) * 100 : 0,
         }))
-        .sort((a, b) => b.profit - a.profit)
+        .sort((a, b) => b.margin - a.margin)
         .slice(0, 10)
     : [];
 
@@ -149,18 +149,15 @@ export default function ExecutiveDashboard() {
 
       {hasProducts && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Cost Distribution */}
           <div className="metric-card">
-            <h3 className="section-header">Top 10 Products by Profit Contribution</h3>
+            <h3 className="section-header">Top 10 Products by Highest Margin</h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={productProfitData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1e6).toFixed(1)}M`} />
+                <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={130} />
                 <Tooltip
-                  formatter={(value: number, name: string) =>
-                    name === 'Margin' ? `${(value as number).toFixed(1)}%` : `฿${formatCurrency(value as number)}`
-                  }
+                  formatter={(value: number) => `${value.toFixed(2)}%`}
                   contentStyle={{
                     backgroundColor: 'hsl(var(--card))',
                     border: '1px solid hsl(var(--border))',
@@ -169,10 +166,9 @@ export default function ExecutiveDashboard() {
                   }}
                 />
                 <Legend />
-                <ReferenceLine x={0} stroke="hsl(var(--muted-foreground))" />
-                <Bar dataKey="profit" name="Profit" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="margin" name="Margin %" radius={[0, 4, 4, 0]}>
                   {productProfitData.map((entry, i) => (
-                    <Cell key={i} fill={entry.profit >= 0 ? 'hsl(168, 72%, 40%)' : 'hsl(0, 72%, 51%)'} />
+                    <Cell key={i} fill={entry.margin >= 20 ? 'hsl(168, 72%, 40%)' : entry.margin >= 10 ? 'hsl(38, 92%, 50%)' : 'hsl(0, 72%, 51%)'} />
                   ))}
                 </Bar>
               </BarChart>
