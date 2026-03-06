@@ -15,6 +15,7 @@ export default function ScenarioCreator() {
   const [scenarioName, setScenarioName] = useState('');
   const [scenarioDesc, setScenarioDesc] = useState('');
   const [globalCostModel, setGlobalCostModel] = useState<CostModel>('actual');
+  const [globalSellingPrice, setGlobalSellingPrice] = useState<string>('');
   const [globalPriceAdj, setGlobalPriceAdj] = useState(0);
   const [globalVolumeAdj, setGlobalVolumeAdj] = useState(0);
   const [globalCostAdj, setGlobalCostAdj] = useState(0);
@@ -48,13 +49,14 @@ export default function ScenarioCreator() {
   const assumptions = useMemo<ScenarioAssumption[]>(() => {
     return products.filter(p => selectedIds.has(p.item_id)).map(p => {
       const o = overrides[p.item_id] || {};
-      const price = o.price ?? p.offer_price * (1 + globalPriceAdj / 100);
+      const basePrice = globalSellingPrice ? Number(globalSellingPrice) : p.offer_price * (1 + globalPriceAdj / 100);
+      const price = o.price ?? basePrice;
       const volume = o.volume ?? p.sale_volume * (1 + globalVolumeAdj / 100);
       const costModel = o.costModel ?? globalCostModel;
       const costAdj = o.costAdj ?? globalCostAdj;
       return calculateAssumption(p, price, volume, costModel, costAdj);
     });
-  }, [products, selectedIds, overrides, globalCostModel, globalPriceAdj, globalVolumeAdj, globalCostAdj]);
+  }, [products, selectedIds, overrides, globalCostModel, globalSellingPrice, globalPriceAdj, globalVolumeAdj, globalCostAdj]);
 
   const totals = useMemo(() => calculateTotals(assumptions), [assumptions]);
 
@@ -96,6 +98,7 @@ export default function ScenarioCreator() {
     setGlobalVolumeAdj(0);
     setGlobalCostAdj(0);
     setGlobalCostModel('actual');
+    setGlobalSellingPrice('');
     setOverrides({});
     setSelectedIds(new Set(products.map(p => p.item_id)));
   };
@@ -145,7 +148,7 @@ export default function ScenarioCreator() {
       {/* Global Adjustments */}
       <div className="metric-card">
         <h3 className="section-header">Global Adjustments</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground">Cost Model</label>
             <Select value={globalCostModel} onValueChange={(v) => setGlobalCostModel(v as CostModel)}>
@@ -160,12 +163,23 @@ export default function ScenarioCreator() {
             </Select>
           </div>
           <div>
+            <label className="text-xs font-medium text-muted-foreground">Selling Price (฿)</label>
+            <Input
+              type="number"
+              value={globalSellingPrice}
+              onChange={e => setGlobalSellingPrice(e.target.value)}
+              placeholder="ใช้ราคาเดิม"
+              className="mt-1 font-mono"
+            />
+          </div>
+          <div>
             <label className="text-xs font-medium text-muted-foreground">Price Adj. (%)</label>
             <Input
               type="number"
               value={globalPriceAdj}
               onChange={e => setGlobalPriceAdj(Number(e.target.value))}
               className="mt-1 font-mono"
+              disabled={!!globalSellingPrice}
             />
           </div>
           <div>
