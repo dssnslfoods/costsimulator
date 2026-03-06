@@ -230,61 +230,66 @@ export default function ScenarioComparison() {
       {/* Comparison Charts */}
       {comparisonData.length >= 2 && (
         <>
-          {/* Impact vs Baseline Summary */}
-          {showBaseline && baselineTotals && selected.length >= 1 && (
-            <div className="metric-card">
-              <h3 className="section-header">📊 ผลกระทบเทียบกับ Baseline (สินค้าทั้งหมด)</h3>
-              <div className="overflow-x-auto">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Scenario</th>
-                      <th className="text-right">Revenue Δ</th>
-                      <th className="text-right">Cost Δ</th>
-                      <th className="text-right">Profit Δ</th>
-                      <th className="text-right">Margin Δ</th>
-                      <th className="text-right">Food Cost Δ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selected.map(s => {
-                      const revDelta = s.totals.total_revenue - baselineTotals.total_revenue;
-                      const costDelta = s.totals.total_cost - baselineTotals.total_cost;
-                      const profitDelta = s.totals.total_profit - baselineTotals.total_profit;
-                      const marginDelta = s.totals.avg_margin - baselineTotals.avg_margin;
-                      const foodCostDelta = (100 - s.totals.avg_margin) - (100 - baselineTotals.avg_margin);
-                      const revPct = baselineTotals.total_revenue !== 0 ? (revDelta / baselineTotals.total_revenue) * 100 : 0;
-                      const costPct = baselineTotals.total_cost !== 0 ? (costDelta / baselineTotals.total_cost) * 100 : 0;
-                      const profitPct = baselineTotals.total_profit !== 0 ? (profitDelta / baselineTotals.total_profit) * 100 : 0;
-                      const deltaColor = (v: number) => v > 0 ? 'text-success' : v < 0 ? 'text-destructive' : 'text-muted-foreground';
-                      const deltaColorInverse = (v: number) => v < 0 ? 'text-success' : v > 0 ? 'text-destructive' : 'text-muted-foreground';
-                      const sign = (v: number) => v > 0 ? '+' : '';
-                      return (
-                        <tr key={s.id}>
-                          <td className="font-medium">{s.name}</td>
-                          <td className={`text-right font-mono text-sm ${deltaColor(revDelta)}`}>
-                            {sign(revDelta)}฿{formatCurrency(revDelta)} ({sign(revPct)}{revPct.toFixed(2)}%)
-                          </td>
-                          <td className={`text-right font-mono text-sm ${deltaColorInverse(costDelta)}`}>
-                            {sign(costDelta)}฿{formatCurrency(costDelta)} ({sign(costPct)}{costPct.toFixed(2)}%)
-                          </td>
-                          <td className={`text-right font-mono text-sm ${deltaColor(profitDelta)}`}>
-                            {sign(profitDelta)}฿{formatCurrency(profitDelta)} ({sign(profitPct)}{profitPct.toFixed(2)}%)
-                          </td>
-                          <td className={`text-right font-mono text-sm ${deltaColor(marginDelta)}`}>
-                            {sign(marginDelta)}{marginDelta.toFixed(2)}%
-                          </td>
-                          <td className={`text-right font-mono text-sm ${deltaColorInverse(foodCostDelta)}`}>
-                            {sign(foodCostDelta)}{foodCostDelta.toFixed(2)}%
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+          {/* Impact vs Baseline - Visual Cards */}
+          {showBaseline && baselineTotals && selected.length >= 1 && selected.map(s => {
+            const metrics = [
+              { label: 'Revenue (รายได้)', before: baselineTotals.total_revenue, after: s.totals.total_revenue, isCurrency: true, positiveIsGood: true },
+              { label: 'Total Cost (ต้นทุน)', before: baselineTotals.total_cost, after: s.totals.total_cost, isCurrency: true, positiveIsGood: false },
+              { label: 'Profit (กำไร)', before: baselineTotals.total_profit, after: s.totals.total_profit, isCurrency: true, positiveIsGood: true },
+              { label: 'Margin %', before: baselineTotals.avg_margin, after: s.totals.avg_margin, isCurrency: false, positiveIsGood: true },
+              { label: 'Food Cost %', before: 100 - baselineTotals.avg_margin, after: 100 - s.totals.avg_margin, isCurrency: false, positiveIsGood: false },
+            ];
+            return (
+              <div key={s.id} className="metric-card space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="section-header mb-0">📊 ผลกระทบของ "{s.name}" ต่อภาพรวม</h3>
+                  <span className="text-xs text-muted-foreground">เทียบกับสินค้าทั้งหมด ({baselineTotals.product_count} รายการ)</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                  {metrics.map(m => {
+                    const delta = m.after - m.before;
+                    const deltaPct = m.isCurrency && m.before !== 0 ? (delta / Math.abs(m.before)) * 100 : delta;
+                    const isGood = m.positiveIsGood ? delta >= 0 : delta <= 0;
+                    const isNeutral = Math.abs(delta) < 0.01;
+                    return (
+                      <div key={m.label} className={`rounded-xl border p-4 space-y-2 ${isNeutral ? 'border-border bg-muted/30' : isGood ? 'border-success/30 bg-success/5' : 'border-destructive/30 bg-destructive/5'}`}>
+                        <p className="text-xs font-medium text-muted-foreground">{m.label}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="font-mono">ก่อน</span>
+                          <span className="font-mono font-semibold text-foreground">
+                            {m.isCurrency ? `฿${formatCurrency(m.before)}` : `${m.before.toFixed(2)}%`}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="font-mono">หลัง</span>
+                          <span className="font-mono font-semibold text-foreground">
+                            {m.isCurrency ? `฿${formatCurrency(m.after)}` : `${m.after.toFixed(2)}%`}
+                          </span>
+                        </div>
+                        <div className={`flex items-center gap-1 pt-1 border-t ${isNeutral ? 'border-border' : isGood ? 'border-success/20' : 'border-destructive/20'}`}>
+                          {!isNeutral && (
+                            <span className={`text-lg ${isGood ? 'text-success' : 'text-destructive'}`}>
+                              {isGood ? '▲' : '▼'}
+                            </span>
+                          )}
+                          <div>
+                            <p className={`font-mono text-sm font-bold ${isNeutral ? 'text-muted-foreground' : isGood ? 'text-success' : 'text-destructive'}`}>
+                              {delta > 0 ? '+' : ''}{m.isCurrency ? `฿${formatCurrency(delta)}` : `${delta.toFixed(2)}%`}
+                            </p>
+                            {m.isCurrency && (
+                              <p className={`font-mono text-xs ${isNeutral ? 'text-muted-foreground' : isGood ? 'text-success' : 'text-destructive'}`}>
+                                ({deltaPct > 0 ? '+' : ''}{deltaPct.toFixed(2)}%)
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {bestRevenue && (
