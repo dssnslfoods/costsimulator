@@ -173,7 +173,7 @@ export default function PriceSensitivity() {
 
           {/* Price vs Margin */}
           <div className="metric-card">
-            <h3 className="section-header">Price vs Margin %</h3>
+            <h3 className="section-header">Price vs Food Margin %</h3>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={sensitivityData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -196,7 +196,7 @@ export default function PriceSensitivity() {
                   }}
                 />
                 <ReferenceLine x={product.offer_price} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" />
-                <Line type="monotone" dataKey="margin" stroke="hsl(262, 83%, 58%)" name="Margin %" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="margin" stroke="hsl(262, 83%, 58%)" name="Food Margin %" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
