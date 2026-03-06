@@ -50,6 +50,51 @@ export default function ScenarioComparison() {
     };
   }, [products]);
 
+  // Build a product lookup for original revenue/cost per item
+  const productMap = useMemo(() => {
+    const map = new Map<string, { revenue: number; cost: number }>();
+    products.forEach(p => {
+      map.set(p.item_id, {
+        revenue: p.offer_price * p.sale_volume,
+        cost: p.approved_cost * p.sale_volume,
+      });
+    });
+    return map;
+  }, [products]);
+
+  // "Before vs After" data: total business impact per scenario
+  const beforeAfterData = useMemo(() => {
+    if (!baselineTotals) return [];
+    return selected.map(s => {
+      // Original revenue/cost of items IN this scenario
+      const originalRevOfAffected = s.assumptions.reduce((sum, a) => {
+        const orig = productMap.get(a.item_id);
+        return sum + (orig ? orig.revenue : 0);
+      }, 0);
+      const originalCostOfAffected = s.assumptions.reduce((sum, a) => {
+        const orig = productMap.get(a.item_id);
+        return sum + (orig ? orig.cost : 0);
+      }, 0);
+      // After = baseline - original affected + scenario affected
+      const afterRevenue = baselineTotals.total_revenue - originalRevOfAffected + s.totals.total_revenue;
+      const afterCost = baselineTotals.total_cost - originalCostOfAffected + s.totals.total_cost;
+      const afterProfit = afterRevenue - afterCost;
+      return {
+        name: s.name.length > 18 ? s.name.substring(0, 18) + '…' : s.name,
+        fullName: s.name,
+        beforeRevenue: baselineTotals.total_revenue,
+        afterRevenue,
+        revenueDelta: afterRevenue - baselineTotals.total_revenue,
+        beforeCost: baselineTotals.total_cost,
+        afterCost,
+        costDelta: afterCost - baselineTotals.total_cost,
+        beforeProfit: baselineTotals.total_profit,
+        afterProfit,
+        profitDelta: afterProfit - baselineTotals.total_profit,
+      };
+    });
+  }, [selected, baselineTotals, productMap]);
+
   const comparisonData = [
     ...(showBaseline && baselineTotals ? [{
       name: '📊 Baseline (ทั้งหมด)',
@@ -290,6 +335,68 @@ export default function ScenarioComparison() {
               </div>
             );
           })}
+
+          {/* Before vs After - Overall Revenue/Cost/Profit Impact */}
+          {showBaseline && beforeAfterData.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Revenue Before vs After */}
+              <div className="metric-card">
+                <h3 className="section-header">Revenue รวม (ก่อน vs หลัง)</h3>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={beforeAfterData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [`฿${formatCurrency(value)}`, name]}
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
+                    />
+                    <Legend />
+                    <Bar dataKey="beforeRevenue" fill="hsl(var(--muted-foreground))" name="ก่อน" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="afterRevenue" fill={COLORS[0]} name="หลัง" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Cost Before vs After */}
+              <div className="metric-card">
+                <h3 className="section-header">Cost รวม (ก่อน vs หลัง)</h3>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={beforeAfterData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [`฿${formatCurrency(value)}`, name]}
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
+                    />
+                    <Legend />
+                    <Bar dataKey="beforeCost" fill="hsl(var(--muted-foreground))" name="ก่อน" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="afterCost" fill={COLORS[3]} name="หลัง" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Profit Before vs After */}
+              <div className="metric-card">
+                <h3 className="section-header">Profit รวม (ก่อน vs หลัง)</h3>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={beforeAfterData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [`฿${formatCurrency(value)}`, name]}
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
+                    />
+                    <Legend />
+                    <Bar dataKey="beforeProfit" fill="hsl(var(--muted-foreground))" name="ก่อน" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="afterProfit" fill={COLORS[1]} name="หลัง" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {bestRevenue && (
