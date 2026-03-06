@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { Product, Scenario, AppView } from '@/types';
+import { Product, Scenario, AppView, ProductGroup } from '@/types';
 
 interface AppState {
   products: Product[];
   scenarios: Scenario[];
+  productGroups: ProductGroup[];
   currentView: AppView;
   selectedScenarioIds: string[];
   editingScenarioId: string | null;
@@ -20,11 +21,15 @@ type Action =
   | { type: 'SET_SELECTED_SCENARIOS'; payload: string[] }
   | { type: 'EDIT_SCENARIO'; payload: string }
   | { type: 'CLEAR_EDITING' }
+  | { type: 'ADD_PRODUCT_GROUP'; payload: ProductGroup }
+  | { type: 'UPDATE_PRODUCT_GROUP'; payload: ProductGroup }
+  | { type: 'DELETE_PRODUCT_GROUP'; payload: string }
   | { type: 'LOAD_STATE'; payload: Partial<AppState> };
 
 const initialState: AppState = {
   products: [],
   scenarios: [],
+  productGroups: [],
   currentView: 'dashboard',
   selectedScenarioIds: [],
   editingScenarioId: null,
@@ -76,6 +81,12 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case 'SET_SELECTED_SCENARIOS':
       return { ...state, selectedScenarioIds: action.payload };
+    case 'ADD_PRODUCT_GROUP':
+      return { ...state, productGroups: [...state.productGroups, action.payload] };
+    case 'UPDATE_PRODUCT_GROUP':
+      return { ...state, productGroups: state.productGroups.map(g => g.id === action.payload.id ? action.payload : g) };
+    case 'DELETE_PRODUCT_GROUP':
+      return { ...state, productGroups: state.productGroups.filter(g => g.id !== action.payload) };
     case 'LOAD_STATE':
       return { ...state, ...action.payload };
     default:
@@ -94,7 +105,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const saved = localStorage.getItem('whatif-app-state');
       if (saved) {
         const parsed = JSON.parse(saved);
-        return { ...init, products: parsed.products || [], scenarios: parsed.scenarios || [] };
+        return { ...init, products: parsed.products || [], scenarios: parsed.scenarios || [], productGroups: parsed.productGroups || [] };
       }
     } catch {}
     return init;
@@ -104,8 +115,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('whatif-app-state', JSON.stringify({
       products: state.products,
       scenarios: state.scenarios,
+      productGroups: state.productGroups,
     }));
-  }, [state.products, state.scenarios]);
+  }, [state.products, state.scenarios, state.productGroups]);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>
