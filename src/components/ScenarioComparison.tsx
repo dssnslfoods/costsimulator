@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAppState } from '@/store/AppContext';
 import { formatCurrency, formatPercent } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Trash2, Copy, Pencil, BookmarkPlus } from 'lucide-react';
 import TvModeToggle from '@/components/TvModeToggle';
 import { toast } from 'sonner';
@@ -25,21 +26,50 @@ const COLORS = [
 
 export default function ScenarioComparison() {
   const { state, dispatch } = useAppState();
-  const { scenarios, selectedScenarioIds } = state;
+  const { scenarios, selectedScenarioIds, products } = state;
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [reportName, setReportName] = useState('');
   const [reportDesc, setReportDesc] = useState('');
+  const [showBaseline, setShowBaseline] = useState(true);
 
   const selected = scenarios.filter(s => selectedScenarioIds.includes(s.id));
 
-  const comparisonData = selected.map(s => ({
-    name: s.name.length > 18 ? s.name.substring(0, 18) + '…' : s.name,
-    revenue: s.totals.total_revenue,
-    cost: s.totals.total_cost,
-    profit: s.totals.total_profit,
-    margin: s.totals.avg_margin,
-    foodCost: 100 - s.totals.avg_margin,
-  }));
+  // Baseline totals from all products (original data)
+  const baselineTotals = useMemo(() => {
+    if (products.length === 0) return null;
+    const totalRevenue = products.reduce((s, p) => s + p.offer_price * p.sale_volume, 0);
+    const totalCost = products.reduce((s, p) => s + p.approved_cost * p.sale_volume, 0);
+    const totalProfit = totalRevenue - totalCost;
+    const avgMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+    return {
+      total_revenue: totalRevenue,
+      total_cost: totalCost,
+      total_profit: totalProfit,
+      avg_margin: avgMargin,
+      product_count: products.length,
+    };
+  }, [products]);
+
+  const comparisonData = [
+    ...(showBaseline && baselineTotals ? [{
+      name: '📊 Baseline (ทั้งหมด)',
+      revenue: baselineTotals.total_revenue,
+      cost: baselineTotals.total_cost,
+      profit: baselineTotals.total_profit,
+      margin: baselineTotals.avg_margin,
+      foodCost: 100 - baselineTotals.avg_margin,
+      isBaseline: true,
+    }] : []),
+    ...selected.map(s => ({
+      name: s.name.length > 18 ? s.name.substring(0, 18) + '…' : s.name,
+      revenue: s.totals.total_revenue,
+      cost: s.totals.total_cost,
+      profit: s.totals.total_profit,
+      margin: s.totals.avg_margin,
+      foodCost: 100 - s.totals.avg_margin,
+      isBaseline: false,
+    })),
+  ];
 
   const bestProfit = selected.length > 0
     ? selected.reduce((b, s) => s.totals.total_profit > b.totals.total_profit ? s : b)
@@ -83,8 +113,12 @@ export default function ScenarioComparison() {
             Select scenarios to compare side by side
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-4">
           <TvModeToggle />
+          <div className="flex items-center gap-2">
+            <Switch checked={showBaseline} onCheckedChange={setShowBaseline} />
+            <span className="text-sm text-muted-foreground">เทียบกับ Baseline</span>
+          </div>
           {selected.length >= 2 && (
             <Button size="sm" onClick={() => setShowSaveDialog(true)}>
               <BookmarkPlus size={14} />
@@ -194,8 +228,64 @@ export default function ScenarioComparison() {
       </div>
 
       {/* Comparison Charts */}
-      {selected.length >= 2 && (
+      {comparisonData.length >= 2 && (
         <>
+          {/* Impact vs Baseline Summary */}
+          {showBaseline && baselineTotals && selected.length >= 1 && (
+            <div className="metric-card">
+              <h3 className="section-header">📊 ผลกระทบเทียบกับ Baseline (สินค้าทั้งหมด)</h3>
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Scenario</th>
+                      <th className="text-right">Revenue Δ</th>
+                      <th className="text-right">Cost Δ</th>
+                      <th className="text-right">Profit Δ</th>
+                      <th className="text-right">Margin Δ</th>
+                      <th className="text-right">Food Cost Δ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selected.map(s => {
+                      const revDelta = s.totals.total_revenue - baselineTotals.total_revenue;
+                      const costDelta = s.totals.total_cost - baselineTotals.total_cost;
+                      const profitDelta = s.totals.total_profit - baselineTotals.total_profit;
+                      const marginDelta = s.totals.avg_margin - baselineTotals.avg_margin;
+                      const foodCostDelta = (100 - s.totals.avg_margin) - (100 - baselineTotals.avg_margin);
+                      const revPct = baselineTotals.total_revenue !== 0 ? (revDelta / baselineTotals.total_revenue) * 100 : 0;
+                      const costPct = baselineTotals.total_cost !== 0 ? (costDelta / baselineTotals.total_cost) * 100 : 0;
+                      const profitPct = baselineTotals.total_profit !== 0 ? (profitDelta / baselineTotals.total_profit) * 100 : 0;
+                      const deltaColor = (v: number) => v > 0 ? 'text-success' : v < 0 ? 'text-destructive' : 'text-muted-foreground';
+                      const deltaColorInverse = (v: number) => v < 0 ? 'text-success' : v > 0 ? 'text-destructive' : 'text-muted-foreground';
+                      const sign = (v: number) => v > 0 ? '+' : '';
+                      return (
+                        <tr key={s.id}>
+                          <td className="font-medium">{s.name}</td>
+                          <td className={`text-right font-mono text-sm ${deltaColor(revDelta)}`}>
+                            {sign(revDelta)}฿{formatCurrency(revDelta)} ({sign(revPct)}{revPct.toFixed(2)}%)
+                          </td>
+                          <td className={`text-right font-mono text-sm ${deltaColorInverse(costDelta)}`}>
+                            {sign(costDelta)}฿{formatCurrency(costDelta)} ({sign(costPct)}{costPct.toFixed(2)}%)
+                          </td>
+                          <td className={`text-right font-mono text-sm ${deltaColor(profitDelta)}`}>
+                            {sign(profitDelta)}฿{formatCurrency(profitDelta)} ({sign(profitPct)}{profitPct.toFixed(2)}%)
+                          </td>
+                          <td className={`text-right font-mono text-sm ${deltaColor(marginDelta)}`}>
+                            {sign(marginDelta)}{marginDelta.toFixed(2)}%
+                          </td>
+                          <td className={`text-right font-mono text-sm ${deltaColorInverse(foodCostDelta)}`}>
+                            {sign(foodCostDelta)}{foodCostDelta.toFixed(2)}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {bestRevenue && (
               <div className="metric-card bg-primary/5 border-primary/20">
@@ -299,6 +389,9 @@ export default function ScenarioComparison() {
               <thead>
                 <tr>
                   <th>Metric</th>
+                  {showBaseline && baselineTotals && (
+                    <th className="text-right bg-muted/50">📊 Baseline</th>
+                  )}
                   {selected.map(s => (
                     <th key={s.id} className="text-right">{s.name}</th>
                   ))}
@@ -307,6 +400,9 @@ export default function ScenarioComparison() {
               <tbody>
                 <tr>
                   <td className="font-medium">Revenue</td>
+                  {showBaseline && baselineTotals && (
+                    <td className="text-right font-mono text-sm bg-muted/50">฿{formatCurrency(baselineTotals.total_revenue)}</td>
+                  )}
                   {selected.map(s => (
                     <td key={s.id} className={`text-right font-mono text-sm ${s.id === bestRevenue?.id ? 'highlight-best' : ''}`}>
                       ฿{formatCurrency(s.totals.total_revenue)}
@@ -315,6 +411,9 @@ export default function ScenarioComparison() {
                 </tr>
                 <tr>
                   <td className="font-medium">Total Cost</td>
+                  {showBaseline && baselineTotals && (
+                    <td className="text-right font-mono text-sm bg-muted/50">฿{formatCurrency(baselineTotals.total_cost)}</td>
+                  )}
                   {selected.map(s => (
                     <td key={s.id} className="text-right font-mono text-sm">
                       ฿{formatCurrency(s.totals.total_cost)}
@@ -323,6 +422,9 @@ export default function ScenarioComparison() {
                 </tr>
                 <tr>
                   <td className="font-medium">Profit</td>
+                  {showBaseline && baselineTotals && (
+                    <td className="text-right font-mono text-sm bg-muted/50">฿{formatCurrency(baselineTotals.total_profit)}</td>
+                  )}
                   {selected.map(s => (
                     <td key={s.id} className={`text-right font-mono text-sm ${s.id === bestProfit?.id ? 'highlight-best' : ''}`}>
                       ฿{formatCurrency(s.totals.total_profit)}
@@ -331,6 +433,9 @@ export default function ScenarioComparison() {
                 </tr>
                 <tr>
                   <td className="font-medium">Margin %</td>
+                  {showBaseline && baselineTotals && (
+                    <td className="text-right font-mono text-sm bg-muted/50">{formatPercent(baselineTotals.avg_margin)}</td>
+                  )}
                   {selected.map(s => (
                     <td key={s.id} className={`text-right font-mono text-sm ${s.id === bestMargin?.id ? 'highlight-best' : ''}`}>
                       {formatPercent(s.totals.avg_margin)}
@@ -339,6 +444,9 @@ export default function ScenarioComparison() {
                 </tr>
                 <tr>
                   <td className="font-medium">Products</td>
+                  {showBaseline && baselineTotals && (
+                    <td className="text-right font-mono text-sm bg-muted/50">{baselineTotals.product_count}</td>
+                  )}
                   {selected.map(s => (
                     <td key={s.id} className="text-right font-mono text-sm">
                       {s.totals.product_count}
@@ -351,9 +459,9 @@ export default function ScenarioComparison() {
         </>
       )}
 
-      {selected.length === 1 && (
+      {comparisonData.length < 2 && selected.length > 0 && (
         <div className="metric-card text-center py-8">
-          <p className="text-muted-foreground">Select at least 2 scenarios to compare.</p>
+          <p className="text-muted-foreground">เปิด "เทียบกับ Baseline" หรือเลือกอย่างน้อย 2 scenarios เพื่อเปรียบเทียบ</p>
         </div>
       )}
     </div>
