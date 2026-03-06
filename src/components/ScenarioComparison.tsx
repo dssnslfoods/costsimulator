@@ -37,6 +37,7 @@ export default function ScenarioComparison() {
     cost: s.totals.total_cost,
     profit: s.totals.total_profit,
     margin: s.totals.avg_margin,
+    foodCost: 100 - s.totals.avg_margin,
   }));
 
   const bestProfit = selected.length > 0
@@ -268,6 +269,20 @@ export default function ScenarioComparison() {
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
                   <Tooltip formatter={(value: number) => `${value.toFixed(2)}%`} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
                   <Bar dataKey="margin" fill={COLORS[2]} name="Margin %" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Food Cost Comparison */}
+            <div className="metric-card">
+              <h3 className="section-header">Food Cost Comparison</h3>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={comparisonData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
+                  <Tooltip formatter={(value: number) => `${value.toFixed(2)}%`} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
+                  <Bar dataKey="foodCost" fill={COLORS[4]} name="Food Cost %" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
