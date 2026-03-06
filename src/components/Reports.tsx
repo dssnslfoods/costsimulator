@@ -1,12 +1,12 @@
 import { useAppState } from '@/store/AppContext';
 import { formatCurrency, formatPercent } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
-import { FileDown, FileSpreadsheet, FileText } from 'lucide-react';
+import { FileDown, FileSpreadsheet, FileText, Trash2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Reports() {
-  const { state } = useAppState();
-  const { scenarios, products } = state;
+  const { state, dispatch } = useAppState();
+  const { scenarios, products, comparisonReports } = state;
 
   const exportCSV = (filename: string, headers: string[], rows: string[][]) => {
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -138,6 +138,86 @@ export default function Reports() {
           </div>
         </div>
       </div>
+
+      {/* Saved Comparison Reports */}
+      {comparisonReports.length > 0 && (
+        <div className="metric-card">
+          <h3 className="section-header">Saved Comparison Reports</h3>
+          <div className="space-y-3">
+            {comparisonReports.map(report => (
+              <div key={report.id} className="p-4 rounded-lg border space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold">{report.name}</p>
+                    {report.description && <p className="text-xs text-muted-foreground">{report.description}</p>}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(report.created_at).toLocaleDateString()} · {report.snapshot.scenarios.length} scenarios
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => {
+                      dispatch({ type: 'SET_SELECTED_SCENARIOS', payload: report.scenario_ids });
+                      dispatch({ type: 'SET_VIEW', payload: 'scenario-comparison' });
+                    }}>
+                      <Eye size={14} /> ดู
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => {
+                      const headers = ['Metric', ...report.snapshot.scenarios.map(s => s.name)];
+                      const rows = [
+                        ['Revenue', ...report.snapshot.scenarios.map(s => s.totals.total_revenue.toFixed(2))],
+                        ['Cost', ...report.snapshot.scenarios.map(s => s.totals.total_cost.toFixed(2))],
+                        ['Profit', ...report.snapshot.scenarios.map(s => s.totals.total_profit.toFixed(2))],
+                        ['Margin %', ...report.snapshot.scenarios.map(s => s.totals.avg_margin.toFixed(2))],
+                        ['Food Cost %', ...report.snapshot.scenarios.map(s => (100 - s.totals.avg_margin).toFixed(2))],
+                        ['Products', ...report.snapshot.scenarios.map(s => String(s.totals.product_count))],
+                      ];
+                      exportCSV(`report_${report.name.replace(/\s+/g, '_')}.csv`, headers, rows);
+                    }}>
+                      <FileDown size={14} /> CSV
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => {
+                      dispatch({ type: 'DELETE_COMPARISON_REPORT', payload: report.id });
+                      toast.info(`ลบ Report "${report.name}" แล้ว`);
+                    }}>
+                      <Trash2 size={14} />
+                    </Button>
+                  </div>
+                </div>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Scenario</th>
+                      <th className="text-right">Revenue</th>
+                      <th className="text-right">Cost</th>
+                      <th className="text-right">Profit</th>
+                      <th className="text-right">Margin</th>
+                      <th className="text-right">Food Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.snapshot.scenarios.map(s => (
+                      <tr key={s.id}>
+                        <td className="font-medium text-sm">{s.name}</td>
+                        <td className="text-right font-mono text-sm">฿{formatCurrency(s.totals.total_revenue)}</td>
+                        <td className="text-right font-mono text-sm">฿{formatCurrency(s.totals.total_cost)}</td>
+                        <td className={`text-right font-mono text-sm font-semibold ${s.totals.total_profit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                          ฿{formatCurrency(s.totals.total_profit)}
+                        </td>
+                        <td className={`text-right font-mono text-sm font-semibold ${s.totals.avg_margin >= 20 ? 'text-success' : 'text-warning'}`}>
+                          {formatPercent(s.totals.avg_margin)}
+                        </td>
+                        <td className="text-right font-mono text-sm">
+                          {formatPercent(100 - s.totals.avg_margin)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Scenario Detail Reports */}
       {scenarios.length > 0 && (

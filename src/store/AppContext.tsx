@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { Product, Scenario, AppView, ProductGroup } from '@/types';
+import { Product, Scenario, AppView, ProductGroup, ComparisonReport } from '@/types';
 
 interface AppState {
   products: Product[];
   scenarios: Scenario[];
   productGroups: ProductGroup[];
+  comparisonReports: ComparisonReport[];
   currentView: AppView;
   selectedScenarioIds: string[];
   editingScenarioId: string | null;
@@ -24,12 +25,15 @@ type Action =
   | { type: 'ADD_PRODUCT_GROUP'; payload: ProductGroup }
   | { type: 'UPDATE_PRODUCT_GROUP'; payload: ProductGroup }
   | { type: 'DELETE_PRODUCT_GROUP'; payload: string }
+  | { type: 'ADD_COMPARISON_REPORT'; payload: ComparisonReport }
+  | { type: 'DELETE_COMPARISON_REPORT'; payload: string }
   | { type: 'LOAD_STATE'; payload: Partial<AppState> };
 
 const initialState: AppState = {
   products: [],
   scenarios: [],
   productGroups: [],
+  comparisonReports: [],
   currentView: 'dashboard',
   selectedScenarioIds: [],
   editingScenarioId: null,
@@ -87,6 +91,10 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, productGroups: state.productGroups.map(g => g.id === action.payload.id ? action.payload : g) };
     case 'DELETE_PRODUCT_GROUP':
       return { ...state, productGroups: state.productGroups.filter(g => g.id !== action.payload) };
+    case 'ADD_COMPARISON_REPORT':
+      return { ...state, comparisonReports: [...state.comparisonReports, action.payload] };
+    case 'DELETE_COMPARISON_REPORT':
+      return { ...state, comparisonReports: state.comparisonReports.filter(r => r.id !== action.payload) };
     case 'LOAD_STATE':
       return { ...state, ...action.payload };
     default:
@@ -105,7 +113,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const saved = localStorage.getItem('whatif-app-state');
       if (saved) {
         const parsed = JSON.parse(saved);
-        return { ...init, products: parsed.products || [], scenarios: parsed.scenarios || [], productGroups: parsed.productGroups || [] };
+        return { ...init, products: parsed.products || [], scenarios: parsed.scenarios || [], productGroups: parsed.productGroups || [], comparisonReports: parsed.comparisonReports || [] };
       }
     } catch {}
     return init;
@@ -116,8 +124,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       products: state.products,
       scenarios: state.scenarios,
       productGroups: state.productGroups,
+      comparisonReports: state.comparisonReports,
     }));
-  }, [state.products, state.scenarios, state.productGroups]);
+  }, [state.products, state.scenarios, state.productGroups, state.comparisonReports]);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>

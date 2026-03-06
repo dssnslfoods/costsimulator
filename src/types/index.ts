@@ -72,6 +72,21 @@ export interface ProductGroup {
   created_at: string;
 }
 
+export interface ComparisonReport {
+  id: string;
+  name: string;
+  description: string;
+  scenario_ids: string[];
+  snapshot: {
+    scenarios: Array<{
+      id: string;
+      name: string;
+      totals: ScenarioTotals;
+    }>;
+  };
+  created_at: string;
+}
+
 export type AppView = 
   | 'dashboard' 
   | 'products' 

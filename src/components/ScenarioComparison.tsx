@@ -1,9 +1,15 @@
+import { useState } from 'react';
 import { useAppState } from '@/store/AppContext';
 import { formatCurrency, formatPercent } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Copy, Pencil } from 'lucide-react';
+import { Trash2, Copy, Pencil, BookmarkPlus } from 'lucide-react';
 import { toast } from 'sonner';
+import { ComparisonReport } from '@/types';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+} from '@/components/ui/dialog';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
@@ -19,6 +25,9 @@ const COLORS = [
 export default function ScenarioComparison() {
   const { state, dispatch } = useAppState();
   const { scenarios, selectedScenarioIds } = state;
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [reportName, setReportName] = useState('');
+  const [reportDesc, setReportDesc] = useState('');
 
   const selected = scenarios.filter(s => selectedScenarioIds.includes(s.id));
 
@@ -40,14 +49,71 @@ export default function ScenarioComparison() {
     ? selected.reduce((b, s) => s.totals.total_revenue > b.totals.total_revenue ? s : b)
     : null;
 
+  const handleSaveReport = () => {
+    if (!reportName.trim()) { toast.error('กรุณาใส่ชื่อ Report'); return; }
+    const report: ComparisonReport = {
+      id: crypto.randomUUID(),
+      name: reportName.trim(),
+      description: reportDesc.trim(),
+      scenario_ids: selectedScenarioIds,
+      snapshot: {
+        scenarios: selected.map(s => ({
+          id: s.id,
+          name: s.name,
+          totals: { ...s.totals },
+        })),
+      },
+      created_at: new Date().toISOString(),
+    };
+    dispatch({ type: 'ADD_COMPARISON_REPORT', payload: report });
+    toast.success(`บันทึก Report "${report.name}" แล้ว`);
+    setShowSaveDialog(false);
+    setReportName('');
+    setReportDesc('');
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-2xl font-bold">Scenario Comparison</h2>
-        <p className="text-muted-foreground text-sm mt-1">
-          Select scenarios to compare side by side
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Scenario Comparison</h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            Select scenarios to compare side by side
+          </p>
+        </div>
+        {selected.length >= 2 && (
+          <Button size="sm" onClick={() => setShowSaveDialog(true)}>
+            <BookmarkPlus size={14} />
+            Save as Report
+          </Button>
+        )}
       </div>
+
+      {/* Save Report Dialog */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>บันทึกเป็น Report</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">ชื่อ Report *</label>
+              <Input value={reportName} onChange={e => setReportName(e.target.value)} placeholder="เช่น Q2 Comparison Report" className="mt-1" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">คำอธิบาย</label>
+              <Input value={reportDesc} onChange={e => setReportDesc(e.target.value)} placeholder="รายละเอียดเพิ่มเติม" className="mt-1" />
+            </div>
+            <div className="text-sm text-muted-foreground">
+              จะบันทึก {selected.length} scenarios: {selected.map(s => s.name).join(', ')}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>ยกเลิก</Button>
+            <Button onClick={handleSaveReport}>บันทึก</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Scenario List */}
       <div className="metric-card">
