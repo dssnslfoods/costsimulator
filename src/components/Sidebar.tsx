@@ -13,13 +13,13 @@ import {
 
 const navItems: { view: AppView; label: string; icon: React.ReactNode }[] = [
   { view: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-  { view: 'products', label: 'Product Master', icon: <Package size={18} /> },
-  { view: 'product-groups', label: 'Product Groups', icon: <FolderOpen size={18} /> },
   { view: 'scenario-creator', label: 'Scenario Creator', icon: <FlaskConical size={18} /> },
   { view: 'scenario-comparison', label: 'Compare Scenarios', icon: <GitCompareArrows size={18} /> },
   { view: 'cost-analysis', label: 'Cost Analysis', icon: <DollarSign size={18} /> },
   { view: 'price-sensitivity', label: 'Price Sensitivity', icon: <TrendingUp size={18} /> },
   { view: 'reports', label: 'Reports', icon: <FileText size={18} /> },
+  { view: 'product-groups', label: 'Product Groups', icon: <FolderOpen size={18} /> },
+  { view: 'products', label: 'Product Master', icon: <Package size={18} /> },
 ];
 
 export default function Sidebar() {
