@@ -64,9 +64,18 @@ export interface PriceSensitivityPoint {
   margin: number;
 }
 
+export interface ProductGroup {
+  id: string;
+  name: string;
+  description: string;
+  product_ids: string[];
+  created_at: string;
+}
+
 export type AppView = 
   | 'dashboard' 
   | 'products' 
+  | 'product-groups'
   | 'scenario-creator' 
   | 'scenario-comparison' 
   | 'cost-analysis' 

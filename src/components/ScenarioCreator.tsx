@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Save, RotateCcw, Search, CheckSquare, Square } from 'lucide-react';
+import { Save, RotateCcw, Search, CheckSquare, Square, FolderOpen } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
 type AdjUnit = 'pct' | 'fixed';
@@ -433,6 +434,25 @@ export default function ScenarioCreator() {
               {selectedIds.size === products.length ? <Square size={14} /> : <CheckSquare size={14} />}
               {selectedIds.size === products.length ? 'Deselect All' : 'Select All'}
             </Button>
+            {state.productGroups.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs">
+                    <FolderOpen size={14} />
+                    เลือกจากกลุ่ม
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {state.productGroups.map(g => (
+                    <DropdownMenuItem key={g.id} onClick={() => {
+                      setSelectedIds(new Set(g.product_ids));
+                    }}>
+                      {g.name} ({g.product_ids.length} สินค้า)
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
               <Input
