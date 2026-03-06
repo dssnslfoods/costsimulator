@@ -6,6 +6,7 @@ interface AppState {
   scenarios: Scenario[];
   currentView: AppView;
   selectedScenarioIds: string[];
+  editingScenarioId: string | null;
 }
 
 type Action =
@@ -17,6 +18,8 @@ type Action =
   | { type: 'SET_VIEW'; payload: AppView }
   | { type: 'TOGGLE_SCENARIO_SELECTION'; payload: string }
   | { type: 'SET_SELECTED_SCENARIOS'; payload: string[] }
+  | { type: 'EDIT_SCENARIO'; payload: string }
+  | { type: 'CLEAR_EDITING' }
   | { type: 'LOAD_STATE'; payload: Partial<AppState> };
 
 const initialState: AppState = {
@@ -24,6 +27,7 @@ const initialState: AppState = {
   scenarios: [],
   currentView: 'dashboard',
   selectedScenarioIds: [],
+  editingScenarioId: null,
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -57,6 +61,10 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case 'SET_VIEW':
       return { ...state, currentView: action.payload };
+    case 'EDIT_SCENARIO':
+      return { ...state, editingScenarioId: action.payload, currentView: 'scenario-creator' };
+    case 'CLEAR_EDITING':
+      return { ...state, editingScenarioId: null };
     case 'TOGGLE_SCENARIO_SELECTION': {
       const exists = state.selectedScenarioIds.includes(action.payload);
       return {

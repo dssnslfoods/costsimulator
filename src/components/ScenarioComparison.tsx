@@ -2,7 +2,7 @@ import { useAppState } from '@/store/AppContext';
 import { formatCurrency, formatPercent } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Copy } from 'lucide-react';
+import { Trash2, Copy, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -83,6 +83,17 @@ export default function ScenarioComparison() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    title="Edit"
+                    onClick={() => {
+                      dispatch({ type: 'EDIT_SCENARIO', payload: s.id });
+                    }}
+                  >
+                    <Pencil size={14} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Duplicate"
                     onClick={() => {
                       dispatch({
                         type: 'DUPLICATE_SCENARIO',
@@ -96,6 +107,7 @@ export default function ScenarioComparison() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    title="Delete"
                     onClick={() => {
                       dispatch({ type: 'DELETE_SCENARIO', payload: s.id });
                       toast.info('Scenario deleted');
