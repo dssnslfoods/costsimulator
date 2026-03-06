@@ -178,43 +178,38 @@ export default function ExecutiveDashboard() {
           {/* Lowest Margin Products */}
           <div className="metric-card">
             <h3 className="section-header">Top 10 Lowest Margin Products</h3>
-            {hasProducts ? (
-              <div>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Product</th>
-                      <th className="text-right">Price</th>
-                      <th className="text-right">Cost</th>
-                      <th className="text-right">Margin</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {products
-                      .map(p => ({
-                        ...p,
-                        margin: p.offer_price > 0 ? ((p.offer_price - p.actual_cost) / p.offer_price) * 100 : 0,
-                      }))
-                      .sort((a, b) => a.margin - b.margin)
-                      .slice(0, 10)
-                      .map((p, i) => (
-                        <tr key={p.item_id}>
-                          <td className="text-muted-foreground text-sm">{i + 1}</td>
-                          <td>
-                            <div className="max-w-[180px] truncate text-sm font-medium">{p.item_name}</div>
-                          </td>
-                          <td className="text-right font-mono text-sm">฿{formatCurrency(p.offer_price)}</td>
-                          <td className="text-right font-mono text-sm">฿{formatCurrency(p.actual_cost)}</td>
-                          <td className={`text-right font-mono text-sm font-semibold ${p.margin >= 20 ? 'text-success' : p.margin >= 10 ? 'text-warning' : 'text-destructive'}`}>
-                            {p.margin.toFixed(1)}%
-                          </td>
-                        </tr>
+            {hasProducts ? (() => {
+              const lowestMarginData = products
+                .map(p => ({
+                  name: p.item_name.length > 18 ? p.item_name.substring(0, 18) + '…' : p.item_name,
+                  margin: p.offer_price > 0 ? ((p.offer_price - p.actual_cost) / p.offer_price) * 100 : 0,
+                }))
+                .sort((a, b) => a.margin - b.margin)
+                .slice(0, 10);
+              return (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={lowestMarginData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={130} />
+                    <Tooltip
+                      formatter={(value: number) => `${value.toFixed(2)}%`}
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                      }}
+                    />
+                    <Bar dataKey="margin" name="Margin %" radius={[0, 4, 4, 0]}>
+                      {lowestMarginData.map((entry, i) => (
+                        <Cell key={i} fill={entry.margin >= 20 ? 'hsl(168, 72%, 40%)' : entry.margin >= 10 ? 'hsl(38, 92%, 50%)' : 'hsl(0, 72%, 51%)'} />
                       ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              );
+            })() : (
               <p className="text-muted-foreground text-sm">No products loaded.</p>
             )}
           </div>
