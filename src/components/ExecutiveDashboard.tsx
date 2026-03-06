@@ -1,6 +1,6 @@
 import { useAppState } from '@/store/AppContext';
 import { formatCurrency, formatNumber } from '@/lib/calculations';
-import { TrendingUp, DollarSign, Percent, Package } from 'lucide-react';
+import { TrendingUp, TrendingDown, Percent, Package, Activity, AlertTriangle } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Legend, ReferenceLine, Cell
@@ -54,8 +54,12 @@ export default function ExecutiveDashboard() {
 
   const totalProductRevenue = products.reduce((s, p) => s + p.offer_price * p.sale_volume, 0);
   const totalActualCost = products.reduce((s, p) => s + p.actual_cost * p.sale_volume, 0);
+  const totalApprovedCost = products.reduce((s, p) => s + p.approved_cost * p.sale_volume, 0);
   const totalProfit = totalProductRevenue - totalActualCost;
   const avgMargin = totalProductRevenue > 0 ? (totalProfit / totalProductRevenue) * 100 : 0;
+  const costToRevenueRatio = totalProductRevenue > 0 ? (totalActualCost / totalProductRevenue) * 100 : 0;
+  const costVariance = totalApprovedCost > 0 ? ((totalActualCost - totalApprovedCost) / totalApprovedCost) * 100 : 0;
+  const lossProducts = products.filter(p => p.offer_price < p.actual_cost).length;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -69,32 +73,32 @@ export default function ExecutiveDashboard() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          label="Total Revenue"
-          value={formatCurrency(totalProductRevenue)}
-          icon={<DollarSign size={20} />}
-          gradient="gradient-primary"
-          subtitle="Based on current data"
-        />
-        <MetricCard
-          label="Total Profit"
-          value={formatCurrency(totalProfit)}
-          icon={<TrendingUp size={20} />}
-          gradient="gradient-success"
-          subtitle="Actual cost basis"
-        />
-        <MetricCard
-          label="Avg. Margin"
+          label="Gross Margin"
           value={`${avgMargin.toFixed(1)}%`}
           icon={<Percent size={20} />}
-          gradient="gradient-warning"
-          subtitle="Weighted average"
+          gradient="gradient-success"
+          subtitle={`Profit ฿${formatCurrency(totalProfit)}`}
         />
         <MetricCard
-          label="Products"
-          value={formatNumber(products.length)}
-          icon={<Package size={20} />}
-          gradient="gradient-dark"
-          subtitle={`${scenarios.length} scenarios created`}
+          label="Cost / Revenue Ratio"
+          value={`${costToRevenueRatio.toFixed(1)}%`}
+          icon={<Activity size={20} />}
+          gradient="gradient-primary"
+          subtitle={costToRevenueRatio > 70 ? 'ต้นทุนสูง ควรปรับปรุง' : 'อยู่ในเกณฑ์ดี'}
+        />
+        <MetricCard
+          label="Cost Variance"
+          value={`${costVariance >= 0 ? '+' : ''}${costVariance.toFixed(1)}%`}
+          icon={costVariance > 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
+          gradient={costVariance > 5 ? 'gradient-warning' : 'gradient-success'}
+          subtitle="Actual vs Approved"
+        />
+        <MetricCard
+          label="Loss Products"
+          value={`${lossProducts} / ${products.length}`}
+          icon={<AlertTriangle size={20} />}
+          gradient={lossProducts > 0 ? 'gradient-warning' : 'gradient-dark'}
+          subtitle={lossProducts > 0 ? 'สินค้าขาดทุน ต้องแก้ไข' : 'ไม่มีสินค้าขาดทุน'}
         />
       </div>
 
