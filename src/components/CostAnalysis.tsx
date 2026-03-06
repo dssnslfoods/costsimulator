@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useAppState } from '@/store/AppContext';
 import { formatCurrency, formatPercent, formatNumber } from '@/lib/calculations';
+import TvModeToggle from '@/components/TvModeToggle';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   ScatterChart, Scatter, ZAxis
@@ -57,11 +58,14 @@ export default function CostAnalysis() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-2xl font-bold">Cost Gap Analysis</h2>
-        <p className="text-muted-foreground text-sm mt-1">
-          Compare Approved, Standard, and Actual costs
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Cost Gap Analysis</h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            Compare Approved, Standard, and Actual costs
+          </p>
+        </div>
+        <TvModeToggle />
       </div>
 
       {/* Summary */}

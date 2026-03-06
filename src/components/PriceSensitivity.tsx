@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import TvModeToggle from '@/components/TvModeToggle';
 import { useAppState } from '@/store/AppContext';
 import { CostModel } from '@/types';
 import { generatePriceSensitivity, formatCurrency, formatPercent } from '@/lib/calculations';
@@ -44,11 +45,14 @@ export default function PriceSensitivity() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-2xl font-bold">Price Sensitivity Analysis</h2>
-        <p className="text-muted-foreground text-sm mt-1">
-          Simulate how price changes affect margin and profit
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Price Sensitivity Analysis</h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            Simulate how price changes affect margin and profit
+          </p>
+        </div>
+        <TvModeToggle />
       </div>
 
       {/* Controls */}

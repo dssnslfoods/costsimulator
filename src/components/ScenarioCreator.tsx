@@ -8,6 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Save, RotateCcw, Search, CheckSquare, Square, FolderOpen } from 'lucide-react';
+import TvModeToggle from '@/components/TvModeToggle';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
@@ -288,6 +289,7 @@ export default function ScenarioCreator() {
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
+          <TvModeToggle />
           {editingScenario && (
             <Button variant="outline" size="sm" onClick={() => {
               dispatch({ type: 'CLEAR_EDITING' });

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, Copy, Pencil, BookmarkPlus } from 'lucide-react';
+import TvModeToggle from '@/components/TvModeToggle';
 import { toast } from 'sonner';
 import { ComparisonReport } from '@/types';
 import {
@@ -82,12 +83,15 @@ export default function ScenarioComparison() {
             Select scenarios to compare side by side
           </p>
         </div>
-        {selected.length >= 2 && (
-          <Button size="sm" onClick={() => setShowSaveDialog(true)}>
-            <BookmarkPlus size={14} />
-            Save as Report
-          </Button>
-        )}
+        <div className="flex gap-2">
+          <TvModeToggle />
+          {selected.length >= 2 && (
+            <Button size="sm" onClick={() => setShowSaveDialog(true)}>
+              <BookmarkPlus size={14} />
+              Save as Report
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Save Report Dialog */}
