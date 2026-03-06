@@ -4,6 +4,7 @@ import { CostModel, Scenario, ScenarioAssumption } from '@/types';
 import { calculateAssumption, calculateTotals, formatCurrency, formatNumber, formatPercent } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Save, RotateCcw, Search, CheckSquare, Square } from 'lucide-react';
@@ -19,6 +20,9 @@ function AdjInput({
   unit,
   onUnitChange,
   unitOptions,
+  sliderMin = -50,
+  sliderMax = 50,
+  step = 1,
 }: {
   label: string;
   value: number;
@@ -26,19 +30,16 @@ function AdjInput({
   unit: string;
   onUnitChange: (u: string) => void;
   unitOptions: { value: string; label: string }[];
+  sliderMin?: number;
+  sliderMax?: number;
+  step?: number;
 }) {
   return (
     <div>
-      <label className="text-xs font-medium text-muted-foreground">{label}</label>
-      <div className="flex gap-1 mt-1">
-        <Input
-          type="number"
-          value={value}
-          onChange={e => onChange(Number(e.target.value))}
-          className="font-mono flex-1"
-        />
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-medium text-muted-foreground">{label}</label>
         <Select value={unit} onValueChange={onUnitChange}>
-          <SelectTrigger className="w-20 shrink-0">
+          <SelectTrigger className="h-6 w-16 text-xs border-0 bg-transparent px-1">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -47,6 +48,22 @@ function AdjInput({
             ))}
           </SelectContent>
         </Select>
+      </div>
+      <div className="flex items-center gap-3 mt-2">
+        <Slider
+          value={[value]}
+          onValueChange={([v]) => onChange(v)}
+          min={sliderMin}
+          max={sliderMax}
+          step={step}
+          className="flex-1"
+        />
+        <Input
+          type="number"
+          value={value}
+          onChange={e => onChange(Number(e.target.value))}
+          className="font-mono w-20 h-8 text-sm text-right shrink-0"
+        />
       </div>
     </div>
   );
@@ -253,6 +270,9 @@ export default function ScenarioCreator() {
               { value: 'pct', label: '%' },
               { value: 'fixed', label: '฿' },
             ]}
+            sliderMin={priceAdjUnit === 'pct' ? -50 : -20}
+            sliderMax={priceAdjUnit === 'pct' ? 50 : 20}
+            step={priceAdjUnit === 'pct' ? 1 : 0.5}
           />
 
           <AdjInput
@@ -265,6 +285,9 @@ export default function ScenarioCreator() {
               { value: 'pct', label: '%' },
               { value: 'pieces', label: 'ชิ้น' },
             ]}
+            sliderMin={volumeAdjUnit === 'pct' ? -50 : -500000}
+            sliderMax={volumeAdjUnit === 'pct' ? 50 : 500000}
+            step={volumeAdjUnit === 'pct' ? 1 : 10000}
           />
 
           <AdjInput
@@ -277,6 +300,9 @@ export default function ScenarioCreator() {
               { value: 'pct', label: '%' },
               { value: 'fixed', label: '฿' },
             ]}
+            sliderMin={costAdjUnit === 'pct' ? -50 : -20}
+            sliderMax={costAdjUnit === 'pct' ? 50 : 20}
+            step={costAdjUnit === 'pct' ? 1 : 0.5}
           />
         </div>
       </div>
