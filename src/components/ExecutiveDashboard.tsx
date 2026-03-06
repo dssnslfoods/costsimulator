@@ -3,7 +3,7 @@ import { formatCurrency, formatNumber } from '@/lib/calculations';
 import { TrendingUp, DollarSign, Percent, Package } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
+  Legend, ReferenceLine, Cell
 } from 'recharts';
 
 const CHART_COLORS = [
@@ -40,12 +40,17 @@ export default function ExecutiveDashboard() {
     ? scenarios.reduce((best, s) => s.totals.avg_margin > best.totals.avg_margin ? s : best)
     : null;
 
-  // Cost distribution for products
-  const costDistribution = hasProducts ? [
-    { name: 'Approved Cost', value: products.reduce((s, p) => s + p.approved_cost * p.sale_volume, 0) },
-    { name: 'Standard Cost', value: products.reduce((s, p) => s + p.standard_cost * p.sale_volume, 0) },
-    { name: 'Actual Cost', value: products.reduce((s, p) => s + p.actual_cost * p.sale_volume, 0) },
-  ] : [];
+  // Top products by profit contribution (sorted best to worst)
+  const productProfitData = hasProducts
+    ? products
+        .map(p => ({
+          name: p.item_name.length > 18 ? p.item_name.substring(0, 18) + '…' : p.item_name,
+          profit: (p.offer_price - p.actual_cost) * p.sale_volume,
+          margin: p.offer_price > 0 ? ((p.offer_price - p.actual_cost) / p.offer_price) * 100 : 0,
+        }))
+        .sort((a, b) => b.profit - a.profit)
+        .slice(0, 10)
+    : [];
 
   const totalProductRevenue = products.reduce((s, p) => s + p.offer_price * p.sale_volume, 0);
   const totalActualCost = products.reduce((s, p) => s + p.actual_cost * p.sale_volume, 0);
@@ -146,25 +151,31 @@ export default function ExecutiveDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Cost Distribution */}
           <div className="metric-card">
-            <h3 className="section-header">Cost Distribution (Total Volume)</h3>
+            <h3 className="section-header">Top 10 Products by Profit Contribution</h3>
             <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={costDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={70}
-                  outerRadius={110}
-                  paddingAngle={3}
-                  dataKey="value"
-                >
-                  {costDistribution.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+              <BarChart data={productProfitData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1e6).toFixed(1)}M`} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={130} />
+                <Tooltip
+                  formatter={(value: number, name: string) =>
+                    name === 'Margin' ? `${(value as number).toFixed(1)}%` : `฿${formatCurrency(value as number)}`
+                  }
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                />
                 <Legend />
-              </PieChart>
+                <ReferenceLine x={0} stroke="hsl(var(--muted-foreground))" />
+                <Bar dataKey="profit" name="Profit" radius={[0, 4, 4, 0]}>
+                  {productProfitData.map((entry, i) => (
+                    <Cell key={i} fill={entry.profit >= 0 ? 'hsl(168, 72%, 40%)' : 'hsl(0, 72%, 51%)'} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
 
