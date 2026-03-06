@@ -5,11 +5,13 @@ import { calculateAssumption, calculateTotals, formatCurrency, formatNumber, for
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Save, RotateCcw, Search } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Save, RotateCcw, Search, CheckSquare, Square } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ScenarioCreator() {
   const { state, dispatch } = useAppState();
+  const products = state.products;
   const [scenarioName, setScenarioName] = useState('');
   const [scenarioDesc, setScenarioDesc] = useState('');
   const [globalCostModel, setGlobalCostModel] = useState<CostModel>('actual');
@@ -17,11 +19,26 @@ export default function ScenarioCreator() {
   const [globalVolumeAdj, setGlobalVolumeAdj] = useState(0);
   const [globalCostAdj, setGlobalCostAdj] = useState(0);
   const [search, setSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(products.map(p => p.item_id)));
   const [overrides, setOverrides] = useState<Record<string, {
     price?: number; volume?: number; costAdj?: number; costModel?: CostModel;
   }>>({});
 
-  const products = state.products;
+  const toggleItem = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === products.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(products.map(p => p.item_id)));
+    }
+  };
 
   const filteredProducts = products.filter(p =>
     p.item_id.toLowerCase().includes(search.toLowerCase()) ||
@@ -29,7 +46,7 @@ export default function ScenarioCreator() {
   );
 
   const assumptions = useMemo<ScenarioAssumption[]>(() => {
-    return products.map(p => {
+    return products.filter(p => selectedIds.has(p.item_id)).map(p => {
       const o = overrides[p.item_id] || {};
       const price = o.price ?? p.offer_price * (1 + globalPriceAdj / 100);
       const volume = o.volume ?? p.sale_volume * (1 + globalVolumeAdj / 100);
@@ -37,14 +54,15 @@ export default function ScenarioCreator() {
       const costAdj = o.costAdj ?? globalCostAdj;
       return calculateAssumption(p, price, volume, costModel, costAdj);
     });
-  }, [products, overrides, globalCostModel, globalPriceAdj, globalVolumeAdj, globalCostAdj]);
+  }, [products, selectedIds, overrides, globalCostModel, globalPriceAdj, globalVolumeAdj, globalCostAdj]);
 
   const totals = useMemo(() => calculateTotals(assumptions), [assumptions]);
 
-  const filteredAssumptions = assumptions.filter(a =>
-    a.item_id.toLowerCase().includes(search.toLowerCase()) ||
-    a.item_name.toLowerCase().includes(search.toLowerCase())
-  );
+  const assumptionMap = useMemo(() => {
+    const map: Record<string, ScenarioAssumption> = {};
+    assumptions.forEach(a => { map[a.item_id] = a; });
+    return map;
+  }, [assumptions]);
 
   const handleSave = () => {
     if (!scenarioName.trim()) {
@@ -79,6 +97,7 @@ export default function ScenarioCreator() {
     setGlobalCostAdj(0);
     setGlobalCostModel('actual');
     setOverrides({});
+    setSelectedIds(new Set(products.map(p => p.item_id)));
   };
 
   if (products.length === 0) {
@@ -197,8 +216,17 @@ export default function ScenarioCreator() {
       {/* Product-level details */}
       <div className="metric-card overflow-x-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="section-header mb-0">Product-Level Simulation</h3>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-3">
+            <h3 className="section-header mb-0">Product Selection</h3>
+            <span className="text-xs text-muted-foreground">
+              {selectedIds.size} / {products.length} selected
+            </span>
+          </div>
+          <div className="flex gap-2 items-center">
+            <Button variant="outline" size="sm" onClick={toggleAll} className="h-8 text-xs">
+              {selectedIds.size === products.length ? <Square size={14} /> : <CheckSquare size={14} />}
+              {selectedIds.size === products.length ? 'Deselect All' : 'Select All'}
+            </Button>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
               <Input
@@ -214,6 +242,7 @@ export default function ScenarioCreator() {
         <table className="data-table">
           <thead>
             <tr>
+              <th className="w-10"></th>
               <th>Product</th>
               <th className="text-right">Price</th>
               <th className="text-right">Volume</th>
@@ -224,24 +253,40 @@ export default function ScenarioCreator() {
             </tr>
           </thead>
           <tbody>
-            {filteredAssumptions.map(a => (
-              <tr key={a.item_id}>
-                <td>
-                  <div className="max-w-[250px] truncate text-sm">{a.item_name}</div>
-                  <div className="text-xs text-muted-foreground font-mono">{a.item_id}</div>
-                </td>
-                <td className="text-right font-mono text-sm">{formatCurrency(a.selling_price)}</td>
-                <td className="text-right font-mono text-sm">{formatNumber(Math.round(a.forecast_volume))}</td>
-                <td className="text-right font-mono text-sm">{formatCurrency(a.adjusted_cost)}</td>
-                <td className="text-right font-mono text-sm">{formatCurrency(a.revenue)}</td>
-                <td className={`text-right font-mono text-sm font-semibold ${a.profit >= 0 ? 'text-success' : 'text-destructive'}`}>
-                  {formatCurrency(a.profit)}
-                </td>
-                <td className={`text-right font-mono text-sm font-semibold ${a.margin >= 20 ? 'text-success' : a.margin >= 10 ? 'text-warning' : 'text-destructive'}`}>
-                  {formatPercent(a.margin)}
-                </td>
-              </tr>
-            ))}
+            {filteredProducts.map(p => {
+              const isSelected = selectedIds.has(p.item_id);
+              const a = assumptionMap[p.item_id];
+              return (
+                <tr key={p.item_id} className={!isSelected ? 'opacity-40' : ''}>
+                  <td>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleItem(p.item_id)}
+                    />
+                  </td>
+                  <td>
+                    <div className="max-w-[250px] truncate text-sm">{p.item_name}</div>
+                    <div className="text-xs text-muted-foreground font-mono">{p.item_id}</div>
+                  </td>
+                  {a ? (
+                    <>
+                      <td className="text-right font-mono text-sm">{formatCurrency(a.selling_price)}</td>
+                      <td className="text-right font-mono text-sm">{formatNumber(Math.round(a.forecast_volume))}</td>
+                      <td className="text-right font-mono text-sm">{formatCurrency(a.adjusted_cost)}</td>
+                      <td className="text-right font-mono text-sm">{formatCurrency(a.revenue)}</td>
+                      <td className={`text-right font-mono text-sm font-semibold ${a.profit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {formatCurrency(a.profit)}
+                      </td>
+                      <td className={`text-right font-mono text-sm font-semibold ${a.margin >= 20 ? 'text-success' : a.margin >= 10 ? 'text-warning' : 'text-destructive'}`}>
+                        {formatPercent(a.margin)}
+                      </td>
+                    </>
+                  ) : (
+                    <td colSpan={6} className="text-center text-xs text-muted-foreground">—</td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
