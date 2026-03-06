@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppState } from '@/store/AppContext';
-import { CostModel, Scenario, ScenarioAssumption } from '@/types';
+import { CostModel, Scenario, ScenarioAssumption, ScenarioConfig } from '@/types';
 import { calculateAssumption, calculateTotals, formatCurrency, formatNumber, formatPercent } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -100,22 +100,35 @@ export default function ScenarioCreator() {
     if (editingScenario) {
       setScenarioName(editingScenario.name);
       setScenarioDesc(editingScenario.description);
-      // Set selected products from assumptions
       setSelectedIds(new Set(editingScenario.assumptions.map(a => a.item_id)));
-      // Load per-product overrides from assumptions
-      const newOverrides: Record<string, { price?: number; volume?: number; costAdj?: number; costModel?: CostModel }> = {};
-      editingScenario.assumptions.forEach(a => {
-        newOverrides[a.item_id] = {
-          price: a.selling_price,
-          volume: a.forecast_volume,
-          costAdj: a.cost_adjustment,
-          costModel: a.cost_model,
-        };
-      });
-      setOverrides(newOverrides);
-      setGlobalPriceAdj(0);
-      setGlobalVolumeAdj(0);
-      setGlobalCostAdj(0);
+
+      // Restore global config
+      if (editingScenario.config) {
+        const c = editingScenario.config;
+        setGlobalCostModel(c.costModel);
+        setGlobalPriceAdj(c.priceAdj);
+        setPriceAdjUnit(c.priceAdjUnit);
+        setGlobalVolumeAdj(c.volumeAdj);
+        setVolumeAdjUnit(c.volumeAdjUnit);
+        setGlobalCostAdj(c.costAdj);
+        setCostAdjUnit(c.costAdjUnit);
+        setOverrides({});
+      } else {
+        // Legacy scenarios without config — load from per-product overrides
+        const newOverrides: Record<string, { price?: number; volume?: number; costAdj?: number; costModel?: CostModel }> = {};
+        editingScenario.assumptions.forEach(a => {
+          newOverrides[a.item_id] = {
+            price: a.selling_price,
+            volume: a.forecast_volume,
+            costAdj: a.cost_adjustment,
+            costModel: a.cost_model,
+          };
+        });
+        setOverrides(newOverrides);
+        setGlobalPriceAdj(0);
+        setGlobalVolumeAdj(0);
+        setGlobalCostAdj(0);
+      }
     }
   }, [editingScenario?.id]);
 
@@ -199,6 +212,16 @@ export default function ScenarioCreator() {
       return;
     }
 
+    const config: ScenarioConfig = {
+      costModel: globalCostModel,
+      priceAdj: globalPriceAdj,
+      priceAdjUnit,
+      volumeAdj: globalVolumeAdj,
+      volumeAdjUnit,
+      costAdj: globalCostAdj,
+      costAdjUnit,
+    };
+
     if (editingScenario) {
       const updated: Scenario = {
         ...editingScenario,
@@ -207,6 +230,7 @@ export default function ScenarioCreator() {
         updated_at: new Date().toISOString(),
         assumptions,
         totals,
+        config,
       };
       dispatch({ type: 'UPDATE_SCENARIO', payload: updated });
       dispatch({ type: 'CLEAR_EDITING' });
@@ -221,6 +245,7 @@ export default function ScenarioCreator() {
         updated_at: new Date().toISOString(),
         assumptions,
         totals,
+        config,
       };
       dispatch({ type: 'ADD_SCENARIO', payload: scenario });
       toast.success(`Scenario "${scenario.name}" saved`);
