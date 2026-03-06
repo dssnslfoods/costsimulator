@@ -175,60 +175,47 @@ export default function ExecutiveDashboard() {
             </ResponsiveContainer>
           </div>
 
-          {/* Scenario Rankings */}
+          {/* Lowest Margin Products */}
           <div className="metric-card">
-            <h3 className="section-header">Scenario Rankings</h3>
-            {hasScenarios ? (
-              <div className="space-y-3">
-                {bestProfit && (
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-success/10">
-                    <div>
-                      <span className="text-xs font-medium text-success uppercase tracking-wider">Best Profit</span>
-                      <p className="font-semibold text-sm mt-0.5">{bestProfit.name}</p>
-                    </div>
-                    <span className="font-mono font-bold text-success">
-                      ฿{formatCurrency(bestProfit.totals.total_profit)}
-                    </span>
-                  </div>
-                )}
-                {bestMargin && (
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10">
-                    <div>
-                      <span className="text-xs font-medium text-primary uppercase tracking-wider">Best Margin</span>
-                      <p className="font-semibold text-sm mt-0.5">{bestMargin.name}</p>
-                    </div>
-                    <span className="font-mono font-bold text-primary">
-                      {bestMargin.totals.avg_margin.toFixed(2)}%
-                    </span>
-                  </div>
-                )}
-                <div className="mt-4">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Scenario</th>
-                        <th className="text-right">Revenue</th>
-                        <th className="text-right">Margin</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {scenarios
-                        .sort((a, b) => b.totals.total_profit - a.totals.total_profit)
-                        .map(s => (
-                          <tr key={s.id}>
-                            <td className="font-medium">{s.name}</td>
-                            <td className="text-right font-mono text-sm">฿{formatCurrency(s.totals.total_revenue)}</td>
-                            <td className="text-right font-mono text-sm">{s.totals.avg_margin.toFixed(1)}%</td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
+            <h3 className="section-header">Top 10 Lowest Margin Products</h3>
+            {hasProducts ? (
+              <div>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Product</th>
+                      <th className="text-right">Price</th>
+                      <th className="text-right">Cost</th>
+                      <th className="text-right">Margin</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {products
+                      .map(p => ({
+                        ...p,
+                        margin: p.offer_price > 0 ? ((p.offer_price - p.actual_cost) / p.offer_price) * 100 : 0,
+                      }))
+                      .sort((a, b) => a.margin - b.margin)
+                      .slice(0, 10)
+                      .map((p, i) => (
+                        <tr key={p.item_id}>
+                          <td className="text-muted-foreground text-sm">{i + 1}</td>
+                          <td>
+                            <div className="max-w-[180px] truncate text-sm font-medium">{p.item_name}</div>
+                          </td>
+                          <td className="text-right font-mono text-sm">฿{formatCurrency(p.offer_price)}</td>
+                          <td className="text-right font-mono text-sm">฿{formatCurrency(p.actual_cost)}</td>
+                          <td className={`text-right font-mono text-sm font-semibold ${p.margin >= 20 ? 'text-success' : p.margin >= 10 ? 'text-warning' : 'text-destructive'}`}>
+                            {p.margin.toFixed(1)}%
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
               </div>
             ) : (
-              <p className="text-muted-foreground text-sm">
-                No scenarios created yet. Go to Scenario Creator to simulate.
-              </p>
+              <p className="text-muted-foreground text-sm">No products loaded.</p>
             )}
           </div>
         </div>
