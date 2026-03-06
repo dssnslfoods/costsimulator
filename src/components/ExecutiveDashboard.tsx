@@ -73,7 +73,7 @@ export default function ExecutiveDashboard() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          label="Gross Margin"
+          label="Food Margin"
           value={`${avgMargin.toFixed(1)}%`}
           icon={<Percent size={20} />}
           gradient="gradient-success"
