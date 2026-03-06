@@ -1,12 +1,35 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import Sidebar from '@/components/Sidebar';
+import ExecutiveDashboard from '@/components/ExecutiveDashboard';
+import ProductMaster from '@/components/ProductMaster';
+import ScenarioCreator from '@/components/ScenarioCreator';
+import ScenarioComparison from '@/components/ScenarioComparison';
+import CostAnalysis from '@/components/CostAnalysis';
+import PriceSensitivity from '@/components/PriceSensitivity';
+import Reports from '@/components/Reports';
+import { useAppState } from '@/store/AppContext';
 
 const Index = () => {
+  const { state } = useAppState();
+
+  const renderView = () => {
+    switch (state.currentView) {
+      case 'dashboard': return <ExecutiveDashboard />;
+      case 'products': return <ProductMaster />;
+      case 'scenario-creator': return <ScenarioCreator />;
+      case 'scenario-comparison': return <ScenarioComparison />;
+      case 'cost-analysis': return <CostAnalysis />;
+      case 'price-sensitivity': return <PriceSensitivity />;
+      case 'reports': return <Reports />;
+      default: return <ExecutiveDashboard />;
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="flex min-h-screen bg-background">
+      <Sidebar />
+      <main className="flex-1 p-6 lg:p-8 overflow-auto max-h-screen">
+        {renderView()}
+      </main>
     </div>
   );
 };
