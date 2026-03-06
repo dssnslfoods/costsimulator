@@ -80,7 +80,7 @@ export default function ExecutiveDashboard() {
           subtitle={`Profit ฿${formatCurrency(totalProfit)}`}
         />
         <MetricCard
-          label="Cost / Revenue Ratio"
+          label="Food Cost Ratio"
           value={`${costToRevenueRatio.toFixed(1)}%`}
           icon={<Activity size={20} />}
           gradient="gradient-primary"
