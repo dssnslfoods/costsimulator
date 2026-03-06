@@ -4,6 +4,7 @@ import { formatCurrency, formatPercent } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileDown, FileSpreadsheet, FileText, Trash2, Eye, TrendingUp, TrendingDown, ChevronDown, ChevronUp } from 'lucide-react';
+import TvModeToggle from '@/components/TvModeToggle';
 import { toast } from 'sonner';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -122,11 +123,14 @@ export default function Reports() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-2xl font-bold">Reports</h2>
-        <p className="text-muted-foreground text-sm mt-1">
-          Generate and export reports for management
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Reports</h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            Generate and export reports for management
+          </p>
+        </div>
+        <TvModeToggle />
       </div>
 
       {/* Report Types */}

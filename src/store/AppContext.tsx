@@ -9,6 +9,7 @@ interface AppState {
   currentView: AppView;
   selectedScenarioIds: string[];
   editingScenarioId: string | null;
+  tvMode: boolean;
 }
 
 type Action =
@@ -27,6 +28,7 @@ type Action =
   | { type: 'DELETE_PRODUCT_GROUP'; payload: string }
   | { type: 'ADD_COMPARISON_REPORT'; payload: ComparisonReport }
   | { type: 'DELETE_COMPARISON_REPORT'; payload: string }
+  | { type: 'TOGGLE_TV_MODE' }
   | { type: 'LOAD_STATE'; payload: Partial<AppState> };
 
 const initialState: AppState = {
@@ -37,6 +39,7 @@ const initialState: AppState = {
   currentView: 'dashboard',
   selectedScenarioIds: [],
   editingScenarioId: null,
+  tvMode: false,
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -95,6 +98,8 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, comparisonReports: [...state.comparisonReports, action.payload] };
     case 'DELETE_COMPARISON_REPORT':
       return { ...state, comparisonReports: state.comparisonReports.filter(r => r.id !== action.payload) };
+    case 'TOGGLE_TV_MODE':
+      return { ...state, tvMode: !state.tvMode };
     case 'LOAD_STATE':
       return { ...state, ...action.payload };
     default:
