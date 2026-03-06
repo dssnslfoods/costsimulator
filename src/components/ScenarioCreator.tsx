@@ -211,11 +211,23 @@ export default function ScenarioCreator() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-2xl font-bold">Scenario Creator</h2>
-        <p className="text-muted-foreground text-sm mt-1">
-          Simulate pricing, volume, and cost changes
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Scenario Creator</h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            Simulate pricing, volume, and cost changes
+          </p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={handleReset}>
+            <RotateCcw size={14} />
+            Reset
+          </Button>
+          <Button size="sm" onClick={handleSave}>
+            <Save size={14} />
+            Save Scenario
+          </Button>
+        </div>
       </div>
 
       {/* Scenario Info */}
@@ -413,17 +425,6 @@ export default function ScenarioCreator() {
         </table>
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-3 justify-end">
-        <Button variant="outline" onClick={handleReset}>
-          <RotateCcw size={16} />
-          Reset
-        </Button>
-        <Button onClick={handleSave}>
-          <Save size={16} />
-          Save Scenario
-        </Button>
-      </div>
     </div>
   );
 }
