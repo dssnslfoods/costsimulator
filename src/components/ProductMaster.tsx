@@ -83,6 +83,10 @@ export default function ProductMaster() {
             onChange={handleImport}
             className="hidden"
           />
+          <Button variant="outline" onClick={handleDownloadTemplate}>
+            <FileSpreadsheet size={16} />
+            Template
+          </Button>
           <Button
             onClick={() => fileRef.current?.click()}
             disabled={importing}
@@ -91,6 +95,11 @@ export default function ProductMaster() {
             {importing ? 'Importing...' : 'Import Excel'}
           </Button>
           {state.products.length > 0 && (
+            <Button variant="secondary" onClick={handleExport}>
+              <Download size={16} />
+              Export Excel
+            </Button>
+          )}
             <Button
               variant="destructive"
               onClick={() => {
