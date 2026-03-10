@@ -96,7 +96,25 @@ export function parseExcelFile(file: File): Promise<ParsedExcelData> {
 
         const finalDbProducts = Array.from(uniqueProductsMap.values());
 
-        const productsForState: Product[] = dbTransactions.map(tx => ({
+        // Ensure unique transactions by date and item_id to prevent Postgres UPSERT ON CONFLICT error
+        const uniqueTxMap = new Map<string, DbTransaction>();
+        for (const tx of dbTransactions) {
+          const key = `${tx.date}_${tx.item_id}`;
+          if (uniqueTxMap.has(key)) {
+            // Aggregate values if duplicate: sum volume, keep latest price/cost
+            const existing = uniqueTxMap.get(key)!;
+            existing.sale_volume += tx.sale_volume;
+            existing.offer_price = tx.offer_price;
+            existing.approved_cost = tx.approved_cost;
+            existing.standard_cost = tx.standard_cost;
+            existing.actual_cost = tx.actual_cost;
+          } else {
+            uniqueTxMap.set(key, tx);
+          }
+        }
+        const finalDbTransactions = Array.from(uniqueTxMap.values());
+
+        const productsForState: Product[] = finalDbTransactions.map(tx => ({
           item_id: tx.item_id,
           item_name: tx.item_name,
           sale_volume: tx.sale_volume,
@@ -110,7 +128,7 @@ export function parseExcelFile(file: File): Promise<ParsedExcelData> {
 
         resolve({
           dbProducts: finalDbProducts,
-          dbTransactions,
+          dbTransactions: finalDbTransactions,
           productsForState
         });
       } catch (err) {
