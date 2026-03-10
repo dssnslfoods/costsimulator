@@ -95,21 +95,22 @@ export default function ProductMaster() {
             {importing ? 'Importing...' : 'Import Excel'}
           </Button>
           {state.products.length > 0 && (
-            <Button variant="secondary" onClick={handleExport}>
-              <Download size={16} />
-              Export Excel
-            </Button>
-          )}
-            <Button
-              variant="destructive"
-              onClick={() => {
-                dispatch({ type: 'SET_PRODUCTS', payload: [] });
-                toast.info('All products cleared');
-              }}
-            >
-              <Trash2 size={16} />
-              Clear
-            </Button>
+            <>
+              <Button variant="secondary" onClick={handleExport}>
+                <Download size={16} />
+                Export Excel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  dispatch({ type: 'SET_PRODUCTS', payload: [] });
+                  toast.info('All products cleared');
+                }}
+              >
+                <Trash2 size={16} />
+                Clear
+              </Button>
+            </>
           )}
         </div>
       </div>
