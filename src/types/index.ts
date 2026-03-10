@@ -7,6 +7,23 @@ export interface Product {
   standard_cost: number;
   actual_cost: number;
   created_at: string;
+  date?: string; // We'll use this for the transaction date if needed, though product master shouldn't have it
+}
+
+export interface DbProductMaster {
+  item_id: string;
+  item_name: string;
+}
+
+export interface DbTransaction {
+  date: string;
+  item_id: string;
+  item_name: string;
+  sale_volume: number;
+  offer_price: number;
+  approved_cost: number;
+  standard_cost: number;
+  actual_cost: number;
 }
 
 export type CostModel = 'approved' | 'standard' | 'actual';
@@ -87,12 +104,12 @@ export interface ComparisonReport {
   created_at: string;
 }
 
-export type AppView = 
-  | 'dashboard' 
-  | 'products' 
+export type AppView =
+  | 'dashboard'
+  | 'products'
   | 'product-groups'
-  | 'scenario-creator' 
-  | 'scenario-comparison' 
-  | 'cost-analysis' 
+  | 'scenario-creator'
+  | 'scenario-comparison'
+  | 'cost-analysis'
   | 'price-sensitivity'
   | 'reports';

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Upload, Search, Trash2, Download, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import { supabase } from '@/lib/supabase';
 
 export default function ProductMaster() {
   const { state, dispatch } = useAppState();
@@ -54,11 +55,28 @@ export default function ProductMaster() {
     if (!file) return;
     setImporting(true);
     try {
-      const products = await parseExcelFile(file);
-      dispatch({ type: 'SET_PRODUCTS', payload: products });
-      toast.success(`Imported ${products.length} products successfully`);
-    } catch (err) {
-      toast.error('Failed to parse Excel file');
+      const { productsForState, dbProducts, dbTransactions } = await parseExcelFile(file);
+
+      // 1. Insert into products_master
+      if (dbProducts.length > 0) {
+        const { error: pmError } = await supabase
+          .from('products_master')
+          .upsert(dbProducts, { onConflict: 'item_id' });
+        if (pmError) throw pmError;
+      }
+
+      // 2. Insert into transaction
+      if (dbTransactions.length > 0) {
+        const { error: txError } = await supabase
+          .from('transaction')
+          .upsert(dbTransactions, { onConflict: 'date,item_id' });
+        if (txError) throw txError;
+      }
+
+      dispatch({ type: 'SET_PRODUCTS', payload: productsForState });
+      toast.success(`Imported ${productsForState.length} products successfully to Database and Dashboard`);
+    } catch (err: any) {
+      toast.error('Failed to parse or upload Excel file: ' + (err.message || String(err)));
       console.error(err);
     } finally {
       setImporting(false);
