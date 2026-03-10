@@ -4,8 +4,9 @@ import { parseExcelFile } from '@/lib/excelImport';
 import { formatCurrency, formatNumber } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Upload, Search, Trash2 } from 'lucide-react';
+import { Upload, Search, Trash2, Download, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 export default function ProductMaster() {
   const { state, dispatch } = useAppState();
