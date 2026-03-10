@@ -14,6 +14,36 @@ export default function ProductMaster() {
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const handleExport = () => {
+    if (state.products.length === 0) return;
+    const data = state.products.map(p => ({
+      Item_id: p.item_id,
+      Item_name: p.item_name,
+      'sale volumn': p.sale_volume,
+      'offer price': p.offer_price,
+      'approved cost': p.approved_cost,
+      'standard cost': p.standard_cost,
+      'actual cost': p.actual_cost,
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Products');
+    XLSX.writeFile(wb, 'product_master.xlsx');
+    toast.success('Exported successfully');
+  };
+
+  const handleDownloadTemplate = () => {
+    const template = [
+      { Item_id: 'ITEM001', Item_name: 'Sample Product', 'sale volumn': 1000, 'offer price': 50, 'approved cost': 30, 'standard cost': 28, 'actual cost': 32 },
+    ];
+    const ws = XLSX.utils.json_to_sheet(template);
+    ws['!cols'] = [{ wch: 12 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 12 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Template');
+    XLSX.writeFile(wb, 'import_template.xlsx');
+    toast.success('Template downloaded');
+  };
+
   const filtered = state.products.filter(p =>
     p.item_id.toLowerCase().includes(search.toLowerCase()) ||
     p.item_name.toLowerCase().includes(search.toLowerCase())
