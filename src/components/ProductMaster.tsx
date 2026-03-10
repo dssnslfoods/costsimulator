@@ -4,14 +4,45 @@ import { parseExcelFile } from '@/lib/excelImport';
 import { formatCurrency, formatNumber } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Upload, Search, Trash2 } from 'lucide-react';
+import { Upload, Search, Trash2, Download, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 export default function ProductMaster() {
   const { state, dispatch } = useAppState();
   const [search, setSearch] = useState('');
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = () => {
+    if (state.products.length === 0) return;
+    const data = state.products.map(p => ({
+      Item_id: p.item_id,
+      Item_name: p.item_name,
+      'sale volumn': p.sale_volume,
+      'offer price': p.offer_price,
+      'approved cost': p.approved_cost,
+      'standard cost': p.standard_cost,
+      'actual cost': p.actual_cost,
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Products');
+    XLSX.writeFile(wb, 'product_master.xlsx');
+    toast.success('Exported successfully');
+  };
+
+  const handleDownloadTemplate = () => {
+    const template = [
+      { Item_id: 'ITEM001', Item_name: 'Sample Product', 'sale volumn': 1000, 'offer price': 50, 'approved cost': 30, 'standard cost': 28, 'actual cost': 32 },
+    ];
+    const ws = XLSX.utils.json_to_sheet(template);
+    ws['!cols'] = [{ wch: 12 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 12 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Template');
+    XLSX.writeFile(wb, 'import_template.xlsx');
+    toast.success('Template downloaded');
+  };
 
   const filtered = state.products.filter(p =>
     p.item_id.toLowerCase().includes(search.toLowerCase()) ||
@@ -52,6 +83,10 @@ export default function ProductMaster() {
             onChange={handleImport}
             className="hidden"
           />
+          <Button variant="outline" onClick={handleDownloadTemplate}>
+            <FileSpreadsheet size={16} />
+            Template
+          </Button>
           <Button
             onClick={() => fileRef.current?.click()}
             disabled={importing}
@@ -60,16 +95,22 @@ export default function ProductMaster() {
             {importing ? 'Importing...' : 'Import Excel'}
           </Button>
           {state.products.length > 0 && (
-            <Button
-              variant="destructive"
-              onClick={() => {
-                dispatch({ type: 'SET_PRODUCTS', payload: [] });
-                toast.info('All products cleared');
-              }}
-            >
-              <Trash2 size={16} />
-              Clear
-            </Button>
+            <>
+              <Button variant="secondary" onClick={handleExport}>
+                <Download size={16} />
+                Export Excel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  dispatch({ type: 'SET_PRODUCTS', payload: [] });
+                  toast.info('All products cleared');
+                }}
+              >
+                <Trash2 size={16} />
+                Clear
+              </Button>
+            </>
           )}
         </div>
       </div>
