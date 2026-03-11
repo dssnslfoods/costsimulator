@@ -25,6 +25,8 @@ export function calculateAssumption(
   return {
     item_id: product.item_id,
     item_name: product.item_name,
+    item_group: product.item_group,
+    item_country: product.item_country,
     selling_price: sellingPrice,
     forecast_volume: forecastVolume,
     cost_model: costModel,

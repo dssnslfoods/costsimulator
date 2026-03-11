@@ -1,7 +1,7 @@
 import Sidebar from '@/components/Sidebar';
 import ExecutiveDashboard from '@/components/ExecutiveDashboard';
 import ProductMaster from '@/components/ProductMaster';
-import ProductGroupManager from '@/components/ProductGroupManager';
+import PromotionManager from '@/components/PromotionManager';
 import ScenarioCreator from '@/components/ScenarioCreator';
 import ScenarioComparison from '@/components/ScenarioComparison';
 import CostAnalysis from '@/components/CostAnalysis';
@@ -16,7 +16,7 @@ const Index = () => {
     switch (state.currentView) {
       case 'dashboard': return <ExecutiveDashboard />;
       case 'products': return <ProductMaster />;
-      case 'product-groups': return <ProductGroupManager />;
+      case 'promotions': return <PromotionManager />;
       case 'scenario-creator': return <ScenarioCreator />;
       case 'scenario-comparison': return <ScenarioComparison />;
       case 'cost-analysis': return <CostAnalysis />;

@@ -1,6 +1,8 @@
 export interface Product {
   item_id: string;
   item_name: string;
+  item_group?: string;
+  item_country?: string;
   sale_volume: number;
   offer_price: number;
   approved_cost: number;
@@ -13,6 +15,8 @@ export interface Product {
 export interface DbProductMaster {
   item_id: string;
   item_name: string;
+  item_group?: string;
+  item_country?: string;
 }
 
 export interface DbTransaction {
@@ -31,6 +35,8 @@ export type CostModel = 'approved' | 'standard' | 'actual';
 export interface ScenarioAssumption {
   item_id: string;
   item_name: string;
+  item_group?: string;
+  item_country?: string;
   selling_price: number;
   forecast_volume: number;
   cost_model: CostModel;
@@ -81,11 +87,17 @@ export interface PriceSensitivityPoint {
   margin: number;
 }
 
-export interface ProductGroup {
+export interface PromotionItem {
+  item_id: string;
+  item_name: string;
+  volume: number;
+}
+
+export interface Promotion {
   id: string;
   name: string;
   description: string;
-  product_ids: string[];
+  items: PromotionItem[];
   created_at: string;
 }
 
@@ -107,7 +119,7 @@ export interface ComparisonReport {
 export type AppView =
   | 'dashboard'
   | 'products'
-  | 'product-groups'
+  | 'promotions'
   | 'scenario-creator'
   | 'scenario-comparison'
   | 'cost-analysis'

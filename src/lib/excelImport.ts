@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { Product, DbProductMaster, DbTransaction } from '@/types';
+import { Product, DbProductMaster, DbTransaction, PromotionItem } from '@/types';
 
 export interface ParsedExcelData {
   productsForState: Product[];
@@ -37,14 +37,25 @@ export function parseExcelFile(file: File): Promise<ParsedExcelData> {
           return 0;
         };
 
+        const getField = (row: Record<string, unknown>, keys: string[]) => {
+          const rowKeys = Object.keys(row);
+          for (const key of keys) {
+            const match = rowKeys.find(k => k.trim().toLowerCase() === key.toLowerCase());
+            if (match !== undefined) return row[match];
+          }
+          return undefined;
+        };
+
         const dbProducts: DbProductMaster[] = productJson
           .filter((row) => {
-            const id = row['Item_id'] || row['item_id'] || row['Item Id'] || row['ITEM_ID'];
+            const id = getField(row, ['item_id', 'item id', 'itemcode', 'item code', 'product_id', 'product id']);
             return id !== undefined && id !== null && id !== '';
           })
           .map((row) => ({
-            item_id: String(row['Item_id'] || row['item_id'] || row['Item Id'] || row['ITEM_ID'] || ''),
-            item_name: String(row['Item_name'] || row['item_name'] || row['Item Name'] || row['ITEM_NAME'] || '')
+            item_id: String(getField(row, ['item_id', 'item id', 'itemcode', 'item code', 'product_id', 'product id']) || ''),
+            item_name: String(getField(row, ['item_name', 'item name', 'itemname', 'product_name', 'product name', 'description']) || ''),
+            item_group: String(getField(row, ['item_group', 'item group', 'group', 'itemgroup']) || '') || undefined,
+            item_country: String(getField(row, ['item_country', 'item country', 'country', 'itemcountry']) || '') || undefined,
           }));
 
         // fallback, collect products from transaction sheet as well if product master sheet is sparse
@@ -52,17 +63,17 @@ export function parseExcelFile(file: File): Promise<ParsedExcelData> {
 
         const dbTransactions: DbTransaction[] = transactionJson
           .filter((row) => {
-            const id = row['Item_id'] || row['item_id'] || row['Item Id'] || row['ITEM_ID'];
+            const id = getField(row, ['item_id', 'item id', 'itemcode', 'item code', 'product_id', 'product id']);
             return id !== undefined && id !== null && id !== '';
           })
           .map((row) => {
-            const itemId = String(row['Item_id'] || row['item_id'] || row['Item Id'] || row['ITEM_ID'] || '');
-            const itemName = String(row['Item_name'] || row['item_name'] || row['Item Name'] || row['ITEM_NAME'] || '');
+            const itemId = String(getField(row, ['item_id', 'item id', 'itemcode', 'item code', 'product_id', 'product id']) || '');
+            const itemName = String(getField(row, ['item_name', 'item name', 'itemname', 'product_name', 'product name', 'description']) || '');
 
-            extractedFromTx.push({ item_id: itemId, item_name: itemName });
+            extractedFromTx.push({ item_id: itemId, item_name: itemName, item_group: undefined, item_country: undefined });
 
             let dateStr = new Date().toISOString().split('T')[0];
-            const rawDate = row['Date'] || row['date'] || row['DATE'];
+            const rawDate = getField(row, ['date', 'docdate', 'posting date', 'created on']);
             if (rawDate) {
               if (typeof rawDate === 'number') {
                 // Excel date
@@ -81,11 +92,11 @@ export function parseExcelFile(file: File): Promise<ParsedExcelData> {
               date: dateStr,
               item_id: itemId,
               item_name: itemName,
-              sale_volume: parseNum(row['sale volumn'] || row['sale_volume'] || row['Sale Volume'] || row['SALE_VOLUME'] || 0),
-              offer_price: parseNum(row['offer price'] || row['offer_price'] || row['Offer Price'] || row['OFFER_PRICE'] || 0),
-              approved_cost: parseNum(row['approved cost'] || row['approved_cost'] || row['Approved Cost'] || row['APPROVED_COST'] || 0),
-              standard_cost: parseNum(row['standard cost'] || row['standard_cost'] || row['Standard Cost'] || row['STANDARD_COST'] || 0),
-              actual_cost: parseNum(row['actual cost'] || row['actual_cost'] || row['Actual Cost'] || row['ACTUAL_COST'] || 0),
+              sale_volume: parseNum(getField(row, ['sale volumn', 'sale_volume', 'sale volume', 'volume', 'qty', 'quantity']) || 0),
+              offer_price: parseNum(getField(row, ['offer price', 'offer_price', 'price']) || 0),
+              approved_cost: parseNum(getField(row, ['approved cost', 'approved_cost', 'cost']) || 0),
+              standard_cost: parseNum(getField(row, ['standard cost', 'standard_cost', 'std cost']) || 0),
+              actual_cost: parseNum(getField(row, ['actual cost', 'actual_cost', 'act cost']) || 0),
             };
           });
 
@@ -131,6 +142,48 @@ export function parseExcelFile(file: File): Promise<ParsedExcelData> {
           dbTransactions: finalDbTransactions,
           productsForState
         });
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+export function parsePromotionExcel(file: File): Promise<PromotionItem[]> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
+
+        const parseNum = (val: unknown): number => {
+          if (typeof val === 'number') return val;
+          if (typeof val === 'string') return parseFloat(val.replace(/,/g, '')) || 0;
+          return 0;
+        };
+
+        const getField = (row: Record<string, unknown>, keys: string[]) => {
+          const rowKeys = Object.keys(row);
+          for (const key of keys) {
+            const match = rowKeys.find(k => k.trim().toLowerCase() === key.toLowerCase());
+            if (match !== undefined) return row[match];
+          }
+          return undefined;
+        };
+
+        const items: PromotionItem[] = json
+          .filter(row => getField(row, ['item_id', 'item id', 'product_id', 'product id']))
+          .map(row => ({
+            item_id: String(getField(row, ['item_id', 'item id', 'product_id', 'product id']) || ''),
+            item_name: String(getField(row, ['item_name', 'item name', 'name', 'product_name']) || ''),
+            volume: parseNum(getField(row, ['volume', 'qty', 'quantity', 'sale_volume', 'sale volume']) || 0)
+          }));
+
+        resolve(items);
       } catch (err) {
         reject(err);
       }

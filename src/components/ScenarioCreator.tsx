@@ -152,7 +152,9 @@ export default function ScenarioCreator() {
 
   const filteredProducts = products.filter(p =>
     p.item_id.toLowerCase().includes(search.toLowerCase()) ||
-    p.item_name.toLowerCase().includes(search.toLowerCase())
+    p.item_name.toLowerCase().includes(search.toLowerCase()) ||
+    (p.item_group || '').toLowerCase().includes(search.toLowerCase()) ||
+    (p.item_country || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const assumptions = useMemo<ScenarioAssumption[]>(() => {
@@ -442,20 +444,26 @@ export default function ScenarioCreator() {
               {selectedIds.size === products.length ? <Square size={14} /> : <CheckSquare size={14} />}
               {selectedIds.size === products.length ? 'Deselect All' : 'Select All'}
             </Button>
-            {state.productGroups.length > 0 && (
+            {state.promotions.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 text-xs">
                     <FolderOpen size={14} />
-                    เลือกจากกลุ่ม
+                    เลือกจากโปรโมชั่น
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {state.productGroups.map(g => (
+                  {state.promotions.map(g => (
                     <DropdownMenuItem key={g.id} onClick={() => {
-                      setSelectedIds(new Set(g.product_ids));
+                      setSelectedIds(new Set(g.items.map(i => i.item_id)));
+                      // Option: Apply volumes from promotion to overrides
+                      const newOverrides = { ...overrides };
+                      g.items.forEach(item => {
+                        newOverrides[item.item_id] = { ...newOverrides[item.item_id], volume: item.volume };
+                      });
+                      setOverrides(newOverrides);
                     }}>
-                      {g.name} ({g.product_ids.length} สินค้า)
+                      {g.name} ({g.items.length} สินค้า)
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -478,6 +486,8 @@ export default function ScenarioCreator() {
             <tr>
               <th className="w-10"></th>
               <th>Product</th>
+              <th>Group</th>
+              <th>Country</th>
               <th className="text-right">Base Price</th>
               <th className="text-right">Selling Price</th>
               <th className="text-right">Volume</th>
@@ -503,6 +513,8 @@ export default function ScenarioCreator() {
                     <div className="max-w-[250px] truncate text-sm">{p.item_name}</div>
                     <div className="text-xs text-muted-foreground font-mono">{p.item_id}</div>
                   </td>
+                  <td className="text-xs text-muted-foreground">{p.item_group || '—'}</td>
+                  <td className="text-xs text-muted-foreground">{p.item_country || '—'}</td>
                   <td className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(p.offer_price)}</td>
                   {a ? (
                     <>
@@ -520,7 +532,7 @@ export default function ScenarioCreator() {
                       </td>
                     </>
                   ) : (
-                    <td colSpan={7} className="text-center text-xs text-muted-foreground">—</td>
+                    <td colSpan={9} className="text-center text-xs text-muted-foreground">—</td>
                   )}
                 </tr>
               );

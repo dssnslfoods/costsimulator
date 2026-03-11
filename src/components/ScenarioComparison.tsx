@@ -1,14 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useAppState } from '@/store/AppContext';
-import { formatCurrency, formatPercent } from '@/lib/calculations';
+import { formatCurrency, formatPercent, getCostByModel } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { Trash2, Copy, Pencil, BookmarkPlus } from 'lucide-react';
+import { Trash2, Copy, Pencil, BookmarkPlus, Download } from 'lucide-react';
 import TvModeToggle from '@/components/TvModeToggle';
 import { toast } from 'sonner';
-import { ComparisonReport } from '@/types';
+import { ComparisonReport, ScenarioAssumption } from '@/types';
+import * as XLSX from 'xlsx';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from '@/components/ui/dialog';
@@ -64,57 +65,142 @@ export default function ScenarioComparison() {
 
   // "Before vs After" data: total business impact per scenario
   const beforeAfterData = useMemo(() => {
-    if (!baselineTotals) return [];
+    if (products.length === 0) return [];
+
     return selected.map(s => {
-      // Original revenue/cost of items IN this scenario
-      const originalRevOfAffected = s.assumptions.reduce((sum, a) => {
-        const orig = productMap.get(a.item_id);
-        return sum + (orig ? orig.revenue : 0);
-      }, 0);
-      const originalCostOfAffected = s.assumptions.reduce((sum, a) => {
-        const orig = productMap.get(a.item_id);
-        return sum + (orig ? orig.cost : 0);
-      }, 0);
-      // After = baseline - original affected + scenario affected
-      const afterRevenue = baselineTotals.total_revenue - originalRevOfAffected + s.totals.total_revenue;
-      const afterCost = baselineTotals.total_cost - originalCostOfAffected + s.totals.total_cost;
-      const afterProfit = afterRevenue - afterCost;
+      let bRevenue = 0; let bCost = 0;
+      let aRevenue = 0; let aCost = 0;
+
+      const assumptionMap = new Map<string, ScenarioAssumption>();
+      s.assumptions.forEach(a => assumptionMap.set(a.item_id, a));
+
+      products.forEach(p => {
+        const a = assumptionMap.get(p.item_id);
+        const costModel = a ? a.cost_model : 'approved'; // Use same cost model as assumption for better baseline comparison
+
+        const origRev = p.offer_price * p.sale_volume;
+        const origCost = getCostByModel(p, costModel) * p.sale_volume;
+
+        bRevenue += origRev;
+        bCost += origCost;
+
+        if (a) {
+          aRevenue += a.revenue;
+          aCost += a.total_cost;
+        } else {
+          aRevenue += origRev;
+          aCost += origCost;
+        }
+      });
+
+      const bProfit = bRevenue - bCost;
+      const aProfit = aRevenue - aCost;
+      const bMargin = bRevenue > 0 ? (bProfit / bRevenue) * 100 : 0;
+      const aMargin = aRevenue > 0 ? (aProfit / aRevenue) * 100 : 0;
+
       return {
         name: s.name.length > 18 ? s.name.substring(0, 18) + '…' : s.name,
         fullName: s.name,
-        beforeRevenue: baselineTotals.total_revenue,
-        afterRevenue,
-        revenueDelta: afterRevenue - baselineTotals.total_revenue,
-        beforeCost: baselineTotals.total_cost,
-        afterCost,
-        costDelta: afterCost - baselineTotals.total_cost,
-        beforeProfit: baselineTotals.total_profit,
-        afterProfit,
-        profitDelta: afterProfit - baselineTotals.total_profit,
+        beforeRevenue: bRevenue,
+        afterRevenue: aRevenue,
+        revenueDelta: aRevenue - bRevenue,
+        beforeCost: bCost,
+        afterCost: aCost,
+        costDelta: aCost - bCost,
+        beforeProfit: bProfit,
+        afterProfit: aProfit,
+        profitDelta: aProfit - bProfit,
+        beforeMargin: bMargin,
+        afterMargin: aMargin,
       };
     });
-  }, [selected, baselineTotals, productMap]);
+  }, [selected, products]);
 
-  const comparisonData = [
-    ...(showBaseline && baselineTotals ? [{
-      name: '📊 Baseline (ทั้งหมด)',
-      revenue: baselineTotals.total_revenue,
-      cost: baselineTotals.total_cost,
-      profit: baselineTotals.total_profit,
-      margin: baselineTotals.avg_margin,
-      foodCost: 100 - baselineTotals.avg_margin,
-      isBaseline: true,
-    }] : []),
-    ...selected.map(s => ({
-      name: s.name.length > 18 ? s.name.substring(0, 18) + '…' : s.name,
-      revenue: s.totals.total_revenue,
-      cost: s.totals.total_cost,
-      profit: s.totals.total_profit,
-      margin: s.totals.avg_margin,
-      foodCost: 100 - s.totals.avg_margin,
-      isBaseline: false,
-    })),
-  ];
+  // Combined impact of ALL selected scenarios
+  const combinedImpact = useMemo(() => {
+    if (products.length === 0 || selected.length === 0) return null;
+
+    const mergedAssumptions = new Map<string, ScenarioAssumption>();
+    selected.forEach(s => {
+      s.assumptions.forEach(a => mergedAssumptions.set(a.item_id, a));
+    });
+
+    let bRevenue = 0; let bCost = 0;
+    let aRevenue = 0; let aCost = 0;
+
+    products.forEach(p => {
+      const a = mergedAssumptions.get(p.item_id);
+      const costModel = a ? a.cost_model : 'approved';
+
+      const origRev = p.offer_price * p.sale_volume;
+      const origCost = getCostByModel(p, costModel) * p.sale_volume;
+
+      bRevenue += origRev;
+      bCost += origCost;
+
+      if (a) {
+        aRevenue += a.revenue;
+        aCost += a.total_cost;
+      } else {
+        aRevenue += origRev;
+        aCost += origCost;
+      }
+    });
+
+    const bProfit = bRevenue - bCost;
+    const aProfit = aRevenue - aCost;
+    const bMargin = bRevenue > 0 ? (bProfit / bRevenue) * 100 : 0;
+    const aMargin = aRevenue > 0 ? (aProfit / aRevenue) * 100 : 0;
+
+    return {
+      beforeRevenue: bRevenue,
+      afterRevenue: aRevenue,
+      beforeCost: bCost,
+      afterCost: aCost,
+      beforeProfit: bProfit,
+      afterProfit: aProfit,
+      beforeMargin: bMargin,
+      afterMargin: aMargin,
+      productCount: products.length,
+      affectedCount: mergedAssumptions.size
+    };
+  }, [selected, products]);
+
+  const comparisonData = useMemo(() => {
+    const data = [
+      ...(showBaseline && baselineTotals ? [{
+        name: '📊 Baseline',
+        revenue: baselineTotals.total_revenue,
+        cost: baselineTotals.total_cost,
+        profit: baselineTotals.total_profit,
+        margin: baselineTotals.avg_margin,
+        foodCost: 100 - baselineTotals.avg_margin,
+        isBaseline: true,
+      }] : []),
+      ...beforeAfterData.map(s => ({
+        name: s.name,
+        revenue: s.afterRevenue,
+        cost: s.afterCost,
+        profit: s.afterProfit,
+        margin: s.afterMargin,
+        foodCost: 100 - s.afterMargin,
+        isBaseline: false,
+      })),
+    ];
+
+    if (selected.length > 1 && combinedImpact) {
+      data.push({
+        name: '✨ Combined',
+        revenue: combinedImpact.afterRevenue,
+        cost: combinedImpact.afterCost,
+        profit: combinedImpact.afterProfit,
+        margin: combinedImpact.afterMargin,
+        foodCost: 100 - combinedImpact.afterMargin,
+        isBaseline: false,
+      });
+    }
+    return data;
+  }, [showBaseline, baselineTotals, beforeAfterData, combinedImpact, selected.length]);
 
   const bestProfit = selected.length > 0
     ? selected.reduce((b, s) => s.totals.total_profit > b.totals.total_profit ? s : b)
@@ -149,6 +235,38 @@ export default function ScenarioComparison() {
     setReportDesc('');
   };
 
+  const handleExportExcel = () => {
+    if (comparisonData.length === 0) return;
+    
+    // Prepare the table data for Excel
+    const metrics = [
+      { label: 'Revenue', key: 'revenue' },
+      { label: 'Total Cost', key: 'cost' },
+      { label: 'Profit', key: 'profit' },
+      { label: 'Food Margin %', key: 'margin' },
+      { label: 'Food Cost %', key: 'foodCost' }
+    ];
+
+    const data = metrics.map(m => {
+      const row: any = { 'Metric': m.label };
+      comparisonData.forEach(scenario => {
+        let val = scenario[m.key as keyof typeof scenario];
+        if (typeof val === 'number') {
+           row[scenario.name] = m.label.includes('%') ? `${val.toFixed(2)}%` : val;
+        } else {
+           row[scenario.name] = val;
+        }
+      });
+      return row;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Comparison');
+    XLSX.writeFile(wb, 'scenario_comparison.xlsx');
+    toast.success('ส่งออกข้อมูลเปรียบเทียบสำเร็จ');
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -165,10 +283,16 @@ export default function ScenarioComparison() {
             <span className="text-sm text-muted-foreground">เทียบกับ Baseline</span>
           </div>
           {selected.length >= 2 && (
-            <Button size="sm" onClick={() => setShowSaveDialog(true)}>
-              <BookmarkPlus size={14} />
-              Save as Report
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={handleExportExcel}>
+                <Download size={14} />
+                Export Excel
+              </Button>
+              <Button size="sm" onClick={() => setShowSaveDialog(true)}>
+                <BookmarkPlus size={14} />
+                Save as Report
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -209,11 +333,10 @@ export default function ScenarioComparison() {
             {scenarios.map(s => (
               <div
                 key={s.id}
-                className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                  selectedScenarioIds.includes(s.id)
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:bg-muted/50'
-                }`}
+                className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${selectedScenarioIds.includes(s.id)
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:bg-muted/50'
+                  }`}
               >
                 <Checkbox
                   checked={selectedScenarioIds.includes(s.id)}
@@ -276,65 +399,102 @@ export default function ScenarioComparison() {
       {comparisonData.length >= 2 && (
         <>
           {/* Impact vs Baseline - Visual Cards */}
-          {showBaseline && baselineTotals && selected.length >= 1 && selected.map(s => {
-            const metrics = [
-              { label: 'Revenue (รายได้)', before: baselineTotals.total_revenue, after: s.totals.total_revenue, isCurrency: true, positiveIsGood: true },
-              { label: 'Total Cost (ต้นทุน)', before: baselineTotals.total_cost, after: s.totals.total_cost, isCurrency: true, positiveIsGood: false },
-              { label: 'Profit (กำไร)', before: baselineTotals.total_profit, after: s.totals.total_profit, isCurrency: true, positiveIsGood: true },
-              { label: 'Food Margin %', before: baselineTotals.avg_margin, after: s.totals.avg_margin, isCurrency: false, positiveIsGood: true },
-              { label: 'Food Cost %', before: 100 - baselineTotals.avg_margin, after: 100 - s.totals.avg_margin, isCurrency: false, positiveIsGood: false },
-            ];
-            return (
-              <div key={s.id} className="metric-card space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="section-header mb-0">📊 ผลกระทบของ "{s.name}" ต่อภาพรวม</h3>
-                  <span className="text-xs text-muted-foreground">เทียบกับสินค้าทั้งหมด ({baselineTotals.product_count} รายการ)</span>
+          {showBaseline && combinedImpact && (
+            <div className="metric-card space-y-4 border-2 border-primary/20 bg-primary/5">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="section-header mb-0">📊 ผลกระทบรวมของ Scenario ที่เลือก ต่อภาพรวม</h3>
+                  <p className="text-sm text-muted-foreground">
+                    ค่าจำลองจากการรัน {selected.length} scenario รวมกัน (มีผลต่อ {combinedImpact.affectedCount} ผลิตภัณฑ์)
+                  </p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-                  {metrics.map(m => {
-                    const delta = m.after - m.before;
-                    const deltaPct = m.isCurrency && m.before !== 0 ? (delta / Math.abs(m.before)) * 100 : delta;
-                    const isGood = m.positiveIsGood ? delta >= 0 : delta <= 0;
-                    const isNeutral = Math.abs(delta) < 0.01;
-                    return (
-                      <div key={m.label} className={`rounded-xl border p-4 space-y-2 ${isNeutral ? 'border-border bg-muted/30' : isGood ? 'border-success/30 bg-success/5' : 'border-destructive/30 bg-destructive/5'}`}>
-                        <p className="text-xs font-medium text-muted-foreground">{m.label}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className="font-mono">ก่อน</span>
-                          <span className="font-mono font-semibold text-foreground">
-                            {m.isCurrency ? `฿${formatCurrency(m.before)}` : `${m.before.toFixed(2)}%`}
+                <span className="text-xs text-muted-foreground">เทียบกับสินค้าทั้งหมด ({combinedImpact.productCount} รายการ)</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                {[
+                  { label: 'Revenue (รายได้)', before: combinedImpact.beforeRevenue, after: combinedImpact.afterRevenue, isCurrency: true, positiveIsGood: true },
+                  { label: 'Total Cost (ต้นทุน)', before: combinedImpact.beforeCost, after: combinedImpact.afterCost, isCurrency: true, positiveIsGood: false },
+                  { label: 'Profit (กำไร)', before: combinedImpact.beforeProfit, after: combinedImpact.afterProfit, isCurrency: true, positiveIsGood: true },
+                  { label: 'Food Margin %', before: combinedImpact.beforeMargin, after: combinedImpact.afterMargin, isCurrency: false, positiveIsGood: true },
+                  { label: 'Food Cost %', before: 100 - combinedImpact.beforeMargin, after: 100 - combinedImpact.afterMargin, isCurrency: false, positiveIsGood: false },
+                ].map(m => {
+                  const delta = m.after - m.before;
+                  const deltaPct = m.isCurrency && m.before !== 0 ? (delta / Math.abs(m.before)) * 100 : delta;
+                  const isGood = m.positiveIsGood ? delta >= 0 : delta <= 0;
+                  const isNeutral = Math.abs(delta) < 0.01;
+                  return (
+                    <div key={m.label} className={`rounded-xl border p-4 space-y-2 bg-card ${isNeutral ? 'border-border' : isGood ? 'border-success/30 bg-success/5' : 'border-destructive/30 bg-destructive/5'}`}>
+                      <p className="text-xs font-medium text-muted-foreground">{m.label}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-mono">ก่อน</span>
+                        <span className="font-mono font-semibold text-foreground">
+                          {m.isCurrency ? `฿${formatCurrency(m.before)}` : `${m.before.toFixed(2)}%`}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-mono">หลัง</span>
+                        <span className="font-mono font-semibold text-foreground">
+                          {m.isCurrency ? `฿${formatCurrency(m.after)}` : `${m.after.toFixed(2)}%`}
+                        </span>
+                      </div>
+                      <div className={`flex items-center gap-1 pt-1 border-t ${isNeutral ? 'border-border' : isGood ? 'border-success/20' : 'border-destructive/20'}`}>
+                        {!isNeutral && (
+                          <span className={`text-lg ${isGood ? 'text-success' : 'text-destructive'}`}>
+                            {isGood ? '▲' : '▼'}
                           </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className="font-mono">หลัง</span>
-                          <span className="font-mono font-semibold text-foreground">
-                            {m.isCurrency ? `฿${formatCurrency(m.after)}` : `${m.after.toFixed(2)}%`}
-                          </span>
-                        </div>
-                        <div className={`flex items-center gap-1 pt-1 border-t ${isNeutral ? 'border-border' : isGood ? 'border-success/20' : 'border-destructive/20'}`}>
-                          {!isNeutral && (
-                            <span className={`text-lg ${isGood ? 'text-success' : 'text-destructive'}`}>
-                              {isGood ? '▲' : '▼'}
-                            </span>
-                          )}
-                          <div>
-                            <p className={`font-mono text-sm font-bold ${isNeutral ? 'text-muted-foreground' : isGood ? 'text-success' : 'text-destructive'}`}>
-                              {delta > 0 ? '+' : ''}{m.isCurrency ? `฿${formatCurrency(delta)}` : `${delta.toFixed(2)}%`}
+                        )}
+                        <div>
+                          <p className={`font-mono text-sm font-bold ${isNeutral ? 'text-muted-foreground' : isGood ? 'text-success' : 'text-destructive'}`}>
+                            {delta > 0 ? '+' : ''}{m.isCurrency ? `฿${formatCurrency(delta)}` : `${delta.toFixed(2)}%`}
+                          </p>
+                          {m.isCurrency && (
+                            <p className={`font-mono text-xs ${isNeutral ? 'text-muted-foreground' : isGood ? 'text-success' : 'text-destructive'}`}>
+                              ({deltaPct > 0 ? '+' : ''}{deltaPct.toFixed(2)}%)
                             </p>
-                            {m.isCurrency && (
-                              <p className={`font-mono text-xs ${isNeutral ? 'text-muted-foreground' : isGood ? 'text-success' : 'text-destructive'}`}>
-                                ({deltaPct > 0 ? '+' : ''}{deltaPct.toFixed(2)}%)
-                              </p>
-                            )}
-                          </div>
+                          )}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          )}
+
+          {/* Individual Scenario Impacts */}
+          {showBaseline && selected.length > 1 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {beforeAfterData.map(s => {
+                const metrics = [
+                  { label: 'Revenue', before: s.beforeRevenue, after: s.afterRevenue, isCurrency: true, positiveIsGood: true },
+                  { label: 'Profit', before: s.beforeProfit, after: s.afterProfit, isCurrency: true, positiveIsGood: true },
+                  { label: 'Margin %', before: s.beforeMargin, after: s.afterMargin, isCurrency: false, positiveIsGood: true },
+                ];
+                return (
+                  <div key={s.fullName} className="metric-card border border-border/50">
+                    <h4 className="font-semibold text-sm mb-3">ผลกระทบของ "{s.fullName}" ต่อภาพรวม</h4>
+                    <div className="grid grid-cols-3 gap-2">
+                      {metrics.map(m => {
+                        const delta = m.after - m.before;
+                        const isGood = m.positiveIsGood ? delta >= 0 : delta <= 0;
+                        return (
+                          <div key={m.label} className="space-y-1">
+                            <p className="text-[10px] text-muted-foreground uppercase">{m.label}</p>
+                            <p className="font-mono text-xs font-semibold">
+                              {m.isCurrency ? `฿${formatCurrency(m.after)}` : `${m.after.toFixed(1)}%`}
+                            </p>
+                            <p className={`font-mono text-[10px] ${isGood ? 'text-success' : 'text-destructive'}`}>
+                              {delta >= 0 ? '+' : ''}{m.isCurrency ? formatCurrency(delta) : delta.toFixed(1)}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Before vs After - Overall Revenue/Cost/Profit Impact */}
           {showBaseline && beforeAfterData.length > 0 && (
@@ -496,7 +656,7 @@ export default function ScenarioComparison() {
 
           {/* Comparison Table */}
           <div className="metric-card overflow-x-auto">
-            <h3 className="section-header">Detailed Comparison</h3>
+            <h3 className="section-header">Detailed Comparison (ภาพรวมทั้งหมด)</h3>
             <table className="data-table">
               <thead>
                 <tr>
@@ -504,9 +664,12 @@ export default function ScenarioComparison() {
                   {showBaseline && baselineTotals && (
                     <th className="text-right bg-muted/50">📊 Baseline</th>
                   )}
-                  {selected.map(s => (
-                    <th key={s.id} className="text-right">{s.name}</th>
+                  {beforeAfterData.map(s => (
+                    <th key={s.name} className="text-right">{s.name}</th>
                   ))}
+                  {selected.length > 1 && combinedImpact && (
+                    <th className="text-right bg-primary/10">✨ Combined</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -515,55 +678,80 @@ export default function ScenarioComparison() {
                   {showBaseline && baselineTotals && (
                     <td className="text-right font-mono text-sm bg-muted/50">฿{formatCurrency(baselineTotals.total_revenue)}</td>
                   )}
-                  {selected.map(s => (
-                    <td key={s.id} className={`text-right font-mono text-sm ${s.id === bestRevenue?.id ? 'highlight-best' : ''}`}>
-                      ฿{formatCurrency(s.totals.total_revenue)}
+                  {beforeAfterData.map(s => (
+                    <td key={s.name} className="text-right font-mono text-sm">
+                      ฿{formatCurrency(s.afterRevenue)}
                     </td>
                   ))}
+                  {selected.length > 1 && combinedImpact && (
+                    <td className="text-right font-mono text-sm bg-primary/5 font-bold">
+                      ฿{formatCurrency(combinedImpact.afterRevenue)}
+                    </td>
+                  )}
                 </tr>
                 <tr>
                   <td className="font-medium">Total Cost</td>
                   {showBaseline && baselineTotals && (
                     <td className="text-right font-mono text-sm bg-muted/50">฿{formatCurrency(baselineTotals.total_cost)}</td>
                   )}
-                  {selected.map(s => (
-                    <td key={s.id} className="text-right font-mono text-sm">
-                      ฿{formatCurrency(s.totals.total_cost)}
+                  {beforeAfterData.map(s => (
+                    <td key={s.name} className="text-right font-mono text-sm">
+                      ฿{formatCurrency(s.afterCost)}
                     </td>
                   ))}
+                  {selected.length > 1 && combinedImpact && (
+                    <td className="text-right font-mono text-sm bg-primary/5 font-bold">
+                      ฿{formatCurrency(combinedImpact.afterCost)}
+                    </td>
+                  )}
                 </tr>
                 <tr>
                   <td className="font-medium">Profit</td>
                   {showBaseline && baselineTotals && (
                     <td className="text-right font-mono text-sm bg-muted/50">฿{formatCurrency(baselineTotals.total_profit)}</td>
                   )}
-                  {selected.map(s => (
-                    <td key={s.id} className={`text-right font-mono text-sm ${s.id === bestProfit?.id ? 'highlight-best' : ''}`}>
-                      ฿{formatCurrency(s.totals.total_profit)}
+                  {beforeAfterData.map(s => (
+                    <td key={s.name} className="text-right font-mono text-sm">
+                      ฿{formatCurrency(s.afterProfit)}
                     </td>
                   ))}
+                  {selected.length > 1 && combinedImpact && (
+                    <td className="text-right font-mono text-sm bg-primary/5 font-bold">
+                      ฿{formatCurrency(combinedImpact.afterProfit)}
+                    </td>
+                  )}
                 </tr>
                 <tr>
                   <td className="font-medium">Food Margin %</td>
                   {showBaseline && baselineTotals && (
                     <td className="text-right font-mono text-sm bg-muted/50">{formatPercent(baselineTotals.avg_margin)}</td>
                   )}
-                  {selected.map(s => (
-                    <td key={s.id} className={`text-right font-mono text-sm ${s.id === bestMargin?.id ? 'highlight-best' : ''}`}>
-                      {formatPercent(s.totals.avg_margin)}
+                  {beforeAfterData.map(s => (
+                    <td key={s.name} className="text-right font-mono text-sm">
+                      {formatPercent(s.afterMargin)}
                     </td>
                   ))}
+                  {selected.length > 1 && combinedImpact && (
+                    <td className="text-right font-mono text-sm bg-primary/5 font-bold">
+                      {formatPercent(combinedImpact.afterMargin)}
+                    </td>
+                  )}
                 </tr>
                 <tr>
-                  <td className="font-medium">Products</td>
+                  <td className="font-medium">Affected Items</td>
                   {showBaseline && baselineTotals && (
-                    <td className="text-right font-mono text-sm bg-muted/50">{baselineTotals.product_count}</td>
+                    <td className="text-right font-mono text-sm bg-muted/50">-</td>
                   )}
                   {selected.map(s => (
                     <td key={s.id} className="text-right font-mono text-sm">
                       {s.totals.product_count}
                     </td>
                   ))}
+                  {selected.length > 1 && combinedImpact && (
+                    <td className="text-right font-mono text-sm bg-primary/5 font-bold">
+                      {combinedImpact.affectedCount}
+                    </td>
+                  )}
                 </tr>
               </tbody>
             </table>

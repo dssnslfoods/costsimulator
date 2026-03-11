@@ -1,73 +1,53 @@
-# Welcome to your Lovable project
+# Cost Simulator — Analyze, Plan & Profit
 
-## Project info
+ระบบวิเคราะห์ต้นทุน วางแผนราคา และคาดการณ์ผลกำไร สำหรับงานบริหารจัดการสินค้าและต้นทุนในธุรกิจอาหาร
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+---
 
-## How can I edit this code?
+## ลิขสิทธิ์และทรัพย์สินทางปัญญา
 
-There are several ways of editing your application.
+**Copyright © 2025 Arnon Arpaket. สงวนลิขสิทธิ์ทุกประการ.**
 
-**Use Lovable**
+โปรแกรมคอมพิวเตอร์ รหัสต้นฉบับ (Source Code) การออกแบบระบบ ส่วนประกอบทางซอฟต์แวร์ ตลอดจนเอกสารและข้อมูลที่เกี่ยวข้องทั้งหมดในโครงการนี้ ("ซอฟต์แวร์") เป็นงานอันมีลิขสิทธิ์ของ **นายอรรณพ อาภาเกษ (Arnon Arpaket)** ผู้สร้างสรรค์และเจ้าของสิทธิ์แต่เพียงผู้เดียว
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+ซอฟต์แวร์นี้ได้รับความคุ้มครองภายใต้ **พระราชบัญญัติลิขสิทธิ์ พ.ศ. 2537** แห่งราชอาณาจักรไทย และกฎหมายลิขสิทธิ์ระหว่างประเทศที่เกี่ยวข้อง รวมถึงอนุสัญญากรุงเบิร์น (Berne Convention) ว่าด้วยการคุ้มครองวรรณกรรมและศิลปกรรม
 
-Changes made via Lovable will be committed automatically to this repo.
+---
 
-**Use your preferred IDE**
+## ข้อกำหนดการใช้งาน
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+**ห้ามกระทำการดังต่อไปนี้ โดยเด็ดขาด หากมิได้รับอนุญาตเป็นลายลักษณ์อักษรจากเจ้าของลิขสิทธิ์ล่วงหน้า:**
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. ทำซ้ำ คัดลอก ดัดแปลง หรือแก้ไขซอฟต์แวร์หรือส่วนหนึ่งส่วนใดของซอฟต์แวร์ไม่ว่าในรูปแบบใด
+2. เผยแพร่ จำหน่าย หรือแจกจ่ายซอฟต์แวร์แก่บุคคลภายนอกหรือสาธารณะ
+3. ให้เช่า ให้ยืม หรือโอนสิทธิ์การใช้งานซอฟต์แวร์ไม่ว่าด้วยประการใด
+4. ทำวิศวกรรมย้อนกลับ (Reverse Engineering) ถอดรหัส (Decompile) หรือถอดประกอบ (Disassemble) ซอฟต์แวร์
+5. ลบ แก้ไข หรือปิดบังข้อความแสดงลิขสิทธิ์หรือเครื่องหมายแสดงความเป็นเจ้าของใดๆ ที่ปรากฏในซอฟต์แวร์
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## ข้อสงวนสิทธิ์
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+ซอฟต์แวร์นี้จัดทำขึ้นเพื่อวัตถุประสงค์เฉพาะเจาะจงของเจ้าของลิขสิทธิ์ เจ้าของลิขสิทธิ์ไม่รับประกันและไม่รับผิดชอบต่อความเสียหายใดๆ ทั้งทางตรงและทางอ้อม อันเกิดจากการใช้งานซอฟต์แวร์นี้โดยบุคคลที่ไม่ได้รับอนุญาต
 
-# Step 3: Install the necessary dependencies.
-npm i
+การละเมิดลิขสิทธิ์ซอฟต์แวร์นี้ถือเป็นความผิดทางอาญาและทางแพ่ง ซึ่งมีโทษตามที่กำหนดไว้ในพระราชบัญญัติลิขสิทธิ์ พ.ศ. 2537 และที่แก้ไขเพิ่มเติม
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+---
 
-**Edit a file directly in GitHub**
+## เทคโนโลยีที่ใช้
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
+- React / TypeScript
 - Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- Tailwind CSS / shadcn-ui
+- Supabase (Database)
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## ติดต่อเจ้าของลิขสิทธิ์
 
-## Can I connect a custom domain to my Lovable project?
+**Arnon Arpaket**
+อีเมล: arnon.arpaket@[domain]
 
-Yes, you can!
+---
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+*All rights reserved. Unauthorized use, reproduction, or distribution of this software, in whole or in part, is strictly prohibited and may result in civil and criminal penalties under applicable law.*

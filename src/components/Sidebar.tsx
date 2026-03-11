@@ -11,6 +11,14 @@ import {
   FileText,
 } from 'lucide-react';
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
 const navItems: { view: AppView; label: string; icon: React.ReactNode }[] = [
   { view: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
   { view: 'scenario-creator', label: 'Scenario Creator', icon: <FlaskConical size={18} /> },
@@ -18,7 +26,7 @@ const navItems: { view: AppView; label: string; icon: React.ReactNode }[] = [
   { view: 'cost-analysis', label: 'Cost Analysis', icon: <DollarSign size={18} /> },
   { view: 'price-sensitivity', label: 'Price Sensitivity', icon: <TrendingUp size={18} /> },
   { view: 'reports', label: 'Reports', icon: <FileText size={18} /> },
-  { view: 'product-groups', label: 'Product Groups', icon: <FolderOpen size={18} /> },
+  { view: 'promotions', label: 'Promotion (จัดโปรโมชั่น)', icon: <FolderOpen size={18} /> },
   { view: 'products', label: 'Product Master', icon: <Package size={18} /> },
 ];
 
@@ -36,16 +44,39 @@ export default function Sidebar() {
         </p>
       </div>
 
+      {state.availableDates.length > 0 && (
+        <div className="p-4 border-b border-sidebar-border">
+          <Select
+            value={state.selectedDate || undefined}
+            onValueChange={(val) => dispatch({ type: 'SET_SELECTED_DATE', payload: val })}
+          >
+            <SelectTrigger className="w-full bg-sidebar-accent border-sidebar-border text-sidebar-foreground">
+              <SelectValue placeholder="Select Period" />
+            </SelectTrigger>
+            <SelectContent>
+              {state.availableDates.map(date => {
+                const dateObj = new Date(date);
+                const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' });
+                return (
+                  <SelectItem key={date} value={date}>
+                    {formatter.format(dateObj)}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <nav className="flex-1 p-3 space-y-1">
         {navItems.map(({ view, label, icon }) => (
           <button
             key={view}
             onClick={() => dispatch({ type: 'SET_VIEW', payload: view })}
-            className={`nav-item w-full text-left ${
-              state.currentView === view
-                ? 'active'
-                : 'text-sidebar-foreground'
-            }`}
+            className={`nav-item w-full text-left ${state.currentView === view
+              ? 'active'
+              : 'text-sidebar-foreground'
+              }`}
           >
             {icon}
             {label}
