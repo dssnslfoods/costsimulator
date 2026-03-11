@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useAppState } from '@/store/AppContext';
 import { Promotion, PromotionItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     Plus, Pencil, Trash2, Search, Save, X,
     FileUp, ChevronRight, LayoutGrid, List,
@@ -27,12 +28,29 @@ export default function PromotionManager() {
     const [description, setDescription] = useState('');
     const [selectedItems, setSelectedItems] = useState<PromotionItem[]>([]);
     const [search, setSearch] = useState('');
+    const [filterGroup, setFilterGroup] = useState<string>('all');
+    const [filterCountry, setFilterCountry] = useState<string>('all');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const filteredProducts = products.filter(p =>
-        p.item_id.toLowerCase().includes(search.toLowerCase()) ||
-        p.item_name.toLowerCase().includes(search.toLowerCase())
+    const uniqueGroups = useMemo(() =>
+        Array.from(new Set(products.map(p => p.item_group).filter(Boolean) as string[])).sort(),
+        [products]
     );
+    const uniqueCountries = useMemo(() =>
+        Array.from(new Set(products.map(p => p.item_country).filter(Boolean) as string[])).sort(),
+        [products]
+    );
+
+    const filteredProducts = products.filter(p => {
+        const matchesSearch =
+            p.item_id.toLowerCase().includes(search.toLowerCase()) ||
+            p.item_name.toLowerCase().includes(search.toLowerCase()) ||
+            (p.item_group || '').toLowerCase().includes(search.toLowerCase()) ||
+            (p.item_country || '').toLowerCase().includes(search.toLowerCase());
+        const matchesGroup = filterGroup === 'all' || p.item_group === filterGroup;
+        const matchesCountry = filterCountry === 'all' || p.item_country === filterCountry;
+        return matchesSearch && matchesGroup && matchesCountry;
+    });
 
     const startCreate = () => {
         setIsCreating(true);
@@ -58,6 +76,9 @@ export default function PromotionManager() {
         setName('');
         setDescription('');
         setSelectedItems([]);
+        setSearch('');
+        setFilterGroup('all');
+        setFilterCountry('all');
     };
 
     const handleSave = () => {
@@ -312,11 +333,39 @@ export default function PromotionManager() {
                             </div>
 
                             <div className="pt-4 border-t">
-                                <div className="flex items-center justify-between mb-2">
+                                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                                     <label className="text-sm font-semibold">เลือกสินค้า ({selectedItems.length})</label>
-                                    <div className="relative">
-                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
-                                        <Input placeholder="ค้นหาสินค้า..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-8 w-40 text-xs" />
+                                    <div className="flex flex-wrap gap-1.5 items-center">
+                                        {uniqueGroups.length > 0 && (
+                                            <Select value={filterGroup} onValueChange={setFilterGroup}>
+                                                <SelectTrigger className="h-8 w-36 text-xs">
+                                                    <SelectValue placeholder="สถานที่จำหน่าย" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">ทุกสถานที่</SelectItem>
+                                                    {uniqueGroups.map(g => (
+                                                        <SelectItem key={g} value={g}>{g}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                        {uniqueCountries.length > 0 && (
+                                            <Select value={filterCountry} onValueChange={setFilterCountry}>
+                                                <SelectTrigger className="h-8 w-36 text-xs">
+                                                    <SelectValue placeholder="ประเทศที่จำหน่าย" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">ทุกประเทศ</SelectItem>
+                                                    {uniqueCountries.map(c => (
+                                                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                        <div className="relative">
+                                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
+                                            <Input placeholder="ค้นหาสินค้า..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-8 w-36 text-xs" />
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="max-h-[300px] overflow-y-auto border rounded-xl bg-muted/5 divide-y">

@@ -92,6 +92,8 @@ export default function ScenarioCreator() {
   const [costAdjUnit, setCostAdjUnit] = useState<AdjUnit>('pct');
 
   const [search, setSearch] = useState('');
+  const [filterGroup, setFilterGroup] = useState<string>('all');
+  const [filterCountry, setFilterCountry] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(products.map(p => p.item_id)));
   const [overrides, setOverrides] = useState<Record<string, {
     price?: number; volume?: number; costAdj?: number; costModel?: CostModel;
@@ -150,12 +152,25 @@ export default function ScenarioCreator() {
     }
   };
 
-  const filteredProducts = products.filter(p =>
-    p.item_id.toLowerCase().includes(search.toLowerCase()) ||
-    p.item_name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.item_group || '').toLowerCase().includes(search.toLowerCase()) ||
-    (p.item_country || '').toLowerCase().includes(search.toLowerCase())
+  const uniqueGroups = useMemo(() =>
+    Array.from(new Set(products.map(p => p.item_group).filter(Boolean) as string[])).sort(),
+    [products]
   );
+  const uniqueCountries = useMemo(() =>
+    Array.from(new Set(products.map(p => p.item_country).filter(Boolean) as string[])).sort(),
+    [products]
+  );
+
+  const filteredProducts = products.filter(p => {
+    const matchesSearch =
+      p.item_id.toLowerCase().includes(search.toLowerCase()) ||
+      p.item_name.toLowerCase().includes(search.toLowerCase()) ||
+      (p.item_group || '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.item_country || '').toLowerCase().includes(search.toLowerCase());
+    const matchesGroup = filterGroup === 'all' || p.item_group === filterGroup;
+    const matchesCountry = filterCountry === 'all' || p.item_country === filterCountry;
+    return matchesSearch && matchesGroup && matchesCountry;
+  });
 
   const assumptions = useMemo<ScenarioAssumption[]>(() => {
     return products.filter(p => selectedIds.has(p.item_id)).map(p => {
@@ -432,14 +447,42 @@ export default function ScenarioCreator() {
 
       {/* Product-level details */}
       <div className="metric-card overflow-x-auto">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div className="flex items-center gap-3">
             <h3 className="section-header mb-0">Product Selection</h3>
             <span className="text-xs text-muted-foreground">
               {selectedIds.size} / {products.length} selected
             </span>
           </div>
-          <div className="flex gap-2 items-center">
+          <div className="flex flex-wrap gap-2 items-center">
+            {/* Filter: สถานที่จำหน่าย */}
+            {uniqueGroups.length > 0 && (
+              <Select value={filterGroup} onValueChange={setFilterGroup}>
+                <SelectTrigger className="h-8 w-40 text-xs">
+                  <SelectValue placeholder="สถานที่จำหน่าย" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">ทุกสถานที่จำหน่าย</SelectItem>
+                  {uniqueGroups.map(g => (
+                    <SelectItem key={g} value={g}>{g}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {/* Filter: ประเทศที่จำหน่าย */}
+            {uniqueCountries.length > 0 && (
+              <Select value={filterCountry} onValueChange={setFilterCountry}>
+                <SelectTrigger className="h-8 w-40 text-xs">
+                  <SelectValue placeholder="ประเทศที่จำหน่าย" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">ทุกประเทศ</SelectItem>
+                  {uniqueCountries.map(c => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button variant="outline" size="sm" onClick={toggleAll} className="h-8 text-xs">
               {selectedIds.size === products.length ? <Square size={14} /> : <CheckSquare size={14} />}
               {selectedIds.size === products.length ? 'Deselect All' : 'Select All'}
