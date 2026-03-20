@@ -97,6 +97,8 @@ export interface Promotion {
   id: string;
   name: string;
   description: string;
+  item_group?: string;
+  item_country?: string;
   items: PromotionItem[];
   created_at: string;
 }

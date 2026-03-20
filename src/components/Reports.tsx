@@ -3,9 +3,11 @@ import { useAppState } from '@/store/AppContext';
 import { formatCurrency, formatPercent } from '@/lib/calculations';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileDown, FileSpreadsheet, FileText, Trash2, Eye, TrendingUp, TrendingDown, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileDown, FileSpreadsheet, FileText, Trash2, Eye, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import TvModeToggle from '@/components/TvModeToggle';
 import { toast } from 'sonner';
+import { exportScenarioPDF } from '@/lib/exportScenarioPDF';
+import { exportScenarioExcel } from '@/lib/exportScenarioExcel';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ScatterChart, Scatter, Cell
@@ -83,6 +85,32 @@ export default function Reports() {
       (100 - a.margin).toFixed(2),
     ]);
     exportCSV(`scenario_${s.name.replace(/\s+/g, '_')}.csv`, headers, rows);
+  };
+
+  const handleExportPDF = async (scenarioId: string) => {
+    const s = scenarios.find(sc => sc.id === scenarioId);
+    if (!s) return;
+    try {
+      toast.loading('Generating PDF...');
+      await exportScenarioPDF(s);
+      toast.success('PDF exported successfully');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to export PDF');
+    }
+  };
+
+  const handleExportExcel = async (scenarioId: string) => {
+    const s = scenarios.find(sc => sc.id === scenarioId);
+    if (!s) return;
+    try {
+      toast.loading('Generating Excel...');
+      await exportScenarioExcel(s);
+      toast.success('Excel exported successfully');
+    } catch (error) {
+      console.error('Excel export error:', error);
+      toast.error('Failed to export Excel');
+    }
   };
 
   // Profit Projection data
@@ -456,9 +484,17 @@ export default function Reports() {
                     Margin: {formatPercent(s.totals.avg_margin)}
                   </p>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => exportScenarioDetail(s.id)}>
-                  <FileDown size={14} /> CSV
-                </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => handleExportPDF(s.id)}>
+                    📄 PDF
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleExportExcel(s.id)}>
+                    📊 Excel
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => exportScenarioDetail(s.id)}>
+                    <FileDown size={14} /> CSV
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

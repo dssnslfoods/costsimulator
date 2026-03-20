@@ -7,10 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Save, RotateCcw, Search, CheckSquare, Square, FolderOpen } from 'lucide-react';
+import { Save, RotateCcw, Search, CheckSquare, Square, FolderOpen, X, Info, Download, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import TvModeToggle from '@/components/TvModeToggle';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import { Promotion } from '@/types';
+import { exportScenarioPDF } from '@/lib/exportScenarioPDF';
+import { exportScenarioExcel } from '@/lib/exportScenarioExcel';
 
 type AdjUnit = 'pct' | 'fixed';
 type VolUnit = 'pct' | 'pieces';
@@ -98,6 +101,9 @@ export default function ScenarioCreator() {
   const [overrides, setOverrides] = useState<Record<string, {
     price?: number; volume?: number; costAdj?: number; costModel?: CostModel;
   }>>({});
+  const [activePromotion, setActivePromotion] = useState<Promotion | null>(null);
+  const [sortCol, setSortCol] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   // Load editing scenario
   useEffect(() => {
@@ -161,7 +167,22 @@ export default function ScenarioCreator() {
     [products]
   );
 
+  const promotionItemIds = useMemo(() =>
+    activePromotion ? new Set(activePromotion.items.map(i => i.item_id)) : null,
+    [activePromotion]
+  );
+
+  const handleSort = (col: string) => {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCol(col);
+      setSortDir('asc');
+    }
+  };
+
   const filteredProducts = products.filter(p => {
+    if (promotionItemIds && !promotionItemIds.has(p.item_id)) return false;
     const matchesSearch =
       p.item_id.toLowerCase().includes(search.toLowerCase()) ||
       p.item_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -220,6 +241,61 @@ export default function ScenarioCreator() {
     assumptions.forEach(a => { map[a.item_id] = a; });
     return map;
   }, [assumptions]);
+
+  // Compute assumptions for ALL products (for display + sorting, regardless of selection)
+  const allAssumptionMap = useMemo(() => {
+    const map: Record<string, ScenarioAssumption> = {};
+    products.forEach(p => {
+      const o = overrides[p.item_id] || {};
+      let price: number;
+      if (o.price != null) { price = o.price; }
+      else if (priceAdjUnit === 'fixed') { price = p.offer_price + globalPriceAdj; }
+      else { price = p.offer_price * (1 + globalPriceAdj / 100); }
+
+      let volume: number;
+      if (o.volume != null) { volume = o.volume; }
+      else if (volumeAdjUnit === 'pieces') { volume = p.sale_volume + globalVolumeAdj; }
+      else { volume = p.sale_volume * (1 + globalVolumeAdj / 100); }
+
+      let costAdj: number;
+      if (o.costAdj != null) { costAdj = o.costAdj; }
+      else if (costAdjUnit === 'fixed') {
+        const baseCost = globalCostModel === 'approved' ? p.approved_cost
+          : globalCostModel === 'standard' ? p.standard_cost : p.actual_cost;
+        costAdj = baseCost > 0 ? (globalCostAdj / baseCost) * 100 : 0;
+      } else { costAdj = globalCostAdj; }
+
+      const costModel = o.costModel ?? globalCostModel;
+      map[p.item_id] = calculateAssumption(p, price, volume, costModel, costAdj);
+    });
+    return map;
+  }, [products, overrides, globalCostModel, globalPriceAdj, priceAdjUnit, globalVolumeAdj, volumeAdjUnit, globalCostAdj, costAdjUnit]);
+
+  const sortedProducts = useMemo(() => {
+    if (!sortCol) return filteredProducts;
+    return [...filteredProducts].sort((a, b) => {
+      let aVal: string | number = 0;
+      let bVal: string | number = 0;
+      const aA = allAssumptionMap[a.item_id];
+      const bA = allAssumptionMap[b.item_id];
+      switch (sortCol) {
+        case 'product': aVal = a.item_name; bVal = b.item_name; break;
+        case 'group': aVal = a.item_group || ''; bVal = b.item_group || ''; break;
+        case 'country': aVal = a.item_country || ''; bVal = b.item_country || ''; break;
+        case 'base_price': aVal = a.offer_price; bVal = b.offer_price; break;
+        case 'selling_price': aVal = aA?.selling_price ?? 0; bVal = bA?.selling_price ?? 0; break;
+        case 'volume': aVal = aA?.forecast_volume ?? 0; bVal = bA?.forecast_volume ?? 0; break;
+        case 'unit_cost': aVal = aA?.adjusted_cost ?? 0; bVal = bA?.adjusted_cost ?? 0; break;
+        case 'revenue': aVal = aA?.revenue ?? 0; bVal = bA?.revenue ?? 0; break;
+        case 'profit': aVal = aA?.profit ?? 0; bVal = bA?.profit ?? 0; break;
+        case 'margin': aVal = aA?.margin ?? 0; bVal = bA?.margin ?? 0; break;
+      }
+      if (typeof aVal === 'string') {
+        return sortDir === 'asc' ? aVal.localeCompare(bVal as string) : (bVal as string).localeCompare(aVal);
+      }
+      return sortDir === 'asc' ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
+    });
+  }, [filteredProducts, sortCol, sortDir, allAssumptionMap]);
 
   const handleSave = () => {
     if (!scenarioName.trim()) {
@@ -283,6 +359,37 @@ export default function ScenarioCreator() {
     setGlobalCostModel('actual');
     setOverrides({});
     setSelectedIds(new Set(products.map(p => p.item_id)));
+    setActivePromotion(null);
+  };
+
+  const handleExportPDF = async () => {
+    if (!editingScenario) {
+      toast.error('Please save the scenario first');
+      return;
+    }
+    try {
+      toast.loading('Generating PDF...');
+      await exportScenarioPDF(editingScenario);
+      toast.success('PDF exported successfully');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to export PDF');
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (!editingScenario) {
+      toast.error('Please save the scenario first');
+      return;
+    }
+    try {
+      toast.loading('Generating Excel...');
+      await exportScenarioExcel(editingScenario);
+      toast.success('Excel exported successfully');
+    } catch (error) {
+      console.error('Excel export error:', error);
+      toast.error('Failed to export Excel');
+    }
   };
 
   if (products.length === 0) {
@@ -308,12 +415,30 @@ export default function ScenarioCreator() {
         <div className="flex gap-2 shrink-0">
           <TvModeToggle />
           {editingScenario && (
-            <Button variant="outline" size="sm" onClick={() => {
-              dispatch({ type: 'CLEAR_EDITING' });
-              handleReset();
-            }}>
-              Cancel Edit
-            </Button>
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Download size={14} />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportPDF}>
+                    📄 Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportExcel}>
+                    📊 Export as Excel
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button variant="outline" size="sm" onClick={() => {
+                dispatch({ type: 'CLEAR_EDITING' });
+                handleReset();
+              }}>
+                Cancel Edit
+              </Button>
+            </>
           )}
           <Button variant="outline" size="sm" onClick={handleReset}>
             <RotateCcw size={14} />
@@ -499,14 +624,19 @@ export default function ScenarioCreator() {
                   {state.promotions.map(g => (
                     <DropdownMenuItem key={g.id} onClick={() => {
                       setSelectedIds(new Set(g.items.map(i => i.item_id)));
-                      // Option: Apply volumes from promotion to overrides
                       const newOverrides = { ...overrides };
                       g.items.forEach(item => {
                         newOverrides[item.item_id] = { ...newOverrides[item.item_id], volume: item.volume };
                       });
                       setOverrides(newOverrides);
-                    }}>
-                      {g.name} ({g.items.length} สินค้า)
+                      setActivePromotion(g);
+                    }} className="flex-col gap-1 py-2">
+                      <span className="font-medium">{g.name} ({g.items.length} สินค้า)</span>
+                      {(g.item_group || g.item_country) && (
+                        <span className="text-xs text-muted-foreground">
+                          {[g.item_group, g.item_country].filter(Boolean).join(' • ')}
+                        </span>
+                      )}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -524,26 +654,87 @@ export default function ScenarioCreator() {
           </div>
         </div>
 
+        {activePromotion && (
+          <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-3 mb-3 text-sm text-blue-800">
+            <div className="flex items-start gap-2 mb-2">
+              <Info size={15} className="mt-0.5 shrink-0 text-blue-500" />
+              <span className="flex-1">
+                แสดงเฉพาะสินค้าใน <strong>{activePromotion.name}</strong>
+              </span>
+              <button
+                onClick={() => {
+                  setActivePromotion(null);
+                  // Remove promotion volume overrides
+                  const newOverrides = { ...overrides };
+                  activePromotion.items.forEach(item => {
+                    if (newOverrides[item.item_id]) {
+                      const { volume: _v, ...rest } = newOverrides[item.item_id];
+                      if (Object.keys(rest).length > 0) {
+                        newOverrides[item.item_id] = rest;
+                      } else {
+                        delete newOverrides[item.item_id];
+                      }
+                    }
+                  });
+                  setOverrides(newOverrides);
+                  setSelectedIds(new Set(products.map(p => p.item_id)));
+                }}
+                className="shrink-0 text-blue-500 hover:text-blue-700 transition-colors"
+                title="ยกเลิกการกรองจากโปรโมชั่น"
+              >
+                <X size={15} />
+              </button>
+            </div>
+            {(activePromotion.item_group || activePromotion.item_country) && (
+              <div className="ml-5 text-xs text-blue-600 mb-2">
+                📍 {[activePromotion.item_group, activePromotion.item_country].filter(Boolean).join(' • ')}
+              </div>
+            )}
+            <div className="ml-5 text-xs text-blue-700">
+              📋 Volume ที่ใช้คำนวณเป็น volume ที่กำหนดจาก Promotion Forecast ไม่ใช่ยอดขายจริง
+            </div>
+          </div>
+        )}
+
         <table className="data-table">
           <thead>
             <tr>
               <th className="w-10"></th>
-              <th>Product</th>
-              <th>Group</th>
-              <th>Country</th>
-              <th className="text-right">Base Price</th>
-              <th className="text-right">Selling Price</th>
-              <th className="text-right">Volume</th>
-              <th className="text-right">Unit Cost</th>
-              <th className="text-right">Revenue</th>
-              <th className="text-right">Profit</th>
-              <th className="text-right">Margin</th>
+              {([
+                { col: 'product', label: 'Product', align: 'left' },
+                { col: 'group', label: 'Group', align: 'left' },
+                { col: 'country', label: 'Country', align: 'left' },
+                { col: 'base_price', label: 'Base Price', align: 'right' },
+                { col: 'selling_price', label: 'Selling Price', align: 'right' },
+                { col: 'volume', label: 'Volume', align: 'right' },
+                { col: 'unit_cost', label: 'Unit Cost', align: 'right' },
+                { col: 'revenue', label: 'Revenue', align: 'right' },
+                { col: 'profit', label: 'Profit', align: 'right' },
+                { col: 'margin', label: 'Margin', align: 'right' },
+              ] as const).map(({ col, label, align }) => (
+                <th
+                  key={col}
+                  className={`${align === 'right' ? 'text-right' : ''} cursor-pointer select-none hover:bg-muted/50 transition-colors`}
+                  onClick={() => handleSort(col)}
+                >
+                  <span className={`inline-flex items-center gap-1 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
+                    {label}
+                    {sortCol === col
+                      ? sortDir === 'asc'
+                        ? <ChevronUp size={13} className="text-primary shrink-0" />
+                        : <ChevronDown size={13} className="text-primary shrink-0" />
+                      : <ChevronsUpDown size={13} className="text-muted-foreground/40 shrink-0" />
+                    }
+                  </span>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.map(p => {
+            {sortedProducts.map(p => {
               const isSelected = selectedIds.has(p.item_id);
-              const a = assumptionMap[p.item_id];
+              const a = allAssumptionMap[p.item_id];
+              const hasPromoVolume = activePromotion && promotionItemIds?.has(p.item_id);
               return (
                 <tr key={p.item_id} className={!isSelected ? 'opacity-40' : ''}>
                   <td>
@@ -559,24 +750,25 @@ export default function ScenarioCreator() {
                   <td className="text-xs text-muted-foreground">{p.item_group || '—'}</td>
                   <td className="text-xs text-muted-foreground">{p.item_country || '—'}</td>
                   <td className="text-right font-mono text-sm text-muted-foreground">{formatCurrency(p.offer_price)}</td>
-                  {a ? (
-                    <>
-                      <td className={`text-right font-mono text-sm font-semibold ${a.selling_price !== p.offer_price ? 'text-primary' : ''}`}>
-                        {formatCurrency(a.selling_price)}
-                      </td>
-                      <td className="text-right font-mono text-sm">{formatNumber(Math.round(a.forecast_volume))}</td>
-                      <td className="text-right font-mono text-sm">{formatCurrency(a.adjusted_cost)}</td>
-                      <td className="text-right font-mono text-sm">{formatCurrency(a.revenue)}</td>
-                      <td className={`text-right font-mono text-sm font-semibold ${a.profit >= 0 ? 'text-success' : 'text-destructive'}`}>
-                        {formatCurrency(a.profit)}
-                      </td>
-                      <td className={`text-right font-mono text-sm font-semibold ${a.margin >= 20 ? 'text-success' : a.margin >= 10 ? 'text-warning' : 'text-destructive'}`}>
-                        {formatPercent(a.margin)}
-                      </td>
-                    </>
-                  ) : (
-                    <td colSpan={9} className="text-center text-xs text-muted-foreground">—</td>
-                  )}
+                  <td className={`text-right font-mono text-sm font-semibold ${a.selling_price !== p.offer_price ? 'text-primary' : ''}`}>
+                    {formatCurrency(a.selling_price)}
+                  </td>
+                  <td className="text-right font-mono text-sm">
+                    <span className={hasPromoVolume ? 'text-blue-600 font-semibold' : ''}>
+                      {formatNumber(Math.round(a.forecast_volume))}
+                    </span>
+                    {hasPromoVolume && (
+                      <span className="ml-1 text-[10px] text-blue-400 align-middle" title="Volume จาก Promotion Forecast">📋</span>
+                    )}
+                  </td>
+                  <td className="text-right font-mono text-sm">{formatCurrency(a.adjusted_cost)}</td>
+                  <td className="text-right font-mono text-sm">{formatCurrency(a.revenue)}</td>
+                  <td className={`text-right font-mono text-sm font-semibold ${a.profit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {formatCurrency(a.profit)}
+                  </td>
+                  <td className={`text-right font-mono text-sm font-semibold ${a.margin >= 20 ? 'text-success' : a.margin >= 10 ? 'text-warning' : 'text-destructive'}`}>
+                    {formatPercent(a.margin)}
+                  </td>
                 </tr>
               );
             })}

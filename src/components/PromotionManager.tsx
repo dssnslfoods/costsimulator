@@ -26,6 +26,8 @@ export default function PromotionManager() {
     const [isCreating, setIsCreating] = useState(false);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
+    const [promoGroup, setPromoGroup] = useState<string>('');
+    const [promoCountry, setPromoCountry] = useState<string>('');
     const [selectedItems, setSelectedItems] = useState<PromotionItem[]>([]);
     const [search, setSearch] = useState('');
     const [filterGroup, setFilterGroup] = useState<string>('all');
@@ -57,6 +59,8 @@ export default function PromotionManager() {
         setEditing(null);
         setName('');
         setDescription('');
+        setPromoGroup('');
+        setPromoCountry('');
         setSelectedItems([]);
         setSearch('');
     };
@@ -66,6 +70,8 @@ export default function PromotionManager() {
         setIsCreating(false);
         setName(promo.name);
         setDescription(promo.description);
+        setPromoGroup(promo.item_group || '');
+        setPromoCountry(promo.item_country || '');
         setSelectedItems([...promo.items]);
         setSearch('');
     };
@@ -75,6 +81,8 @@ export default function PromotionManager() {
         setEditing(null);
         setName('');
         setDescription('');
+        setPromoGroup('');
+        setPromoCountry('');
         setSelectedItems([]);
         setSearch('');
         setFilterGroup('all');
@@ -98,6 +106,8 @@ export default function PromotionManager() {
                 ...editing,
                 name: name.trim(),
                 description: description.trim(),
+                item_group: promoGroup || undefined,
+                item_country: promoCountry || undefined,
                 items: finalItems,
             };
             dispatch({ type: 'UPDATE_PROMOTION', payload: updated });
@@ -107,6 +117,8 @@ export default function PromotionManager() {
                 id: crypto.randomUUID(),
                 name: name.trim(),
                 description: description.trim(),
+                item_group: promoGroup || undefined,
+                item_country: promoCountry || undefined,
                 items: finalItems,
                 created_at: new Date().toISOString(),
             };
@@ -330,6 +342,51 @@ export default function PromotionManager() {
                             <div>
                                 <label className="text-sm font-semibold mb-1 block">รายละเอียด</label>
                                 <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="ระบุเงื่อนไขหรือกลุ่มเป้าหมาย" />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-sm font-semibold mb-1 block">สถานที่จำหน่าย</label>
+                                    <Select
+                                        value={promoGroup || '__none__'}
+                                        onValueChange={v => {
+                                            const val = v === '__none__' ? '' : v;
+                                            setPromoGroup(val);
+                                            setFilterGroup(val || 'all');
+                                        }}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="เลือกสถานที่..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="__none__">ไม่ระบุ</SelectItem>
+                                            {uniqueGroups.map(g => (
+                                                <SelectItem key={g} value={g}>{g}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-semibold mb-1 block">ประเทศที่จำหน่าย</label>
+                                    <Select
+                                        value={promoCountry || '__none__'}
+                                        onValueChange={v => {
+                                            const val = v === '__none__' ? '' : v;
+                                            setPromoCountry(val);
+                                            setFilterCountry(val || 'all');
+                                        }}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="เลือกประเทศ..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="__none__">ไม่ระบุ</SelectItem>
+                                            {uniqueCountries.map(c => (
+                                                <SelectItem key={c} value={c}>{c}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
 
                             <div className="pt-4 border-t">
